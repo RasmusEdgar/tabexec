@@ -18,7 +18,7 @@ FLAWCMD = flawfinder
 FLAWOPTS = -F
 SPLINTCMD = splint
 SPLINTARGS = -I $(HOME)/opt/amiga/m68k-amigaos/ndk-include/
-TARGET = damenu
+TARGET = tabexec
 
 ifdef strict
 CFLAGS = $(CFLAGSSTRICT)
