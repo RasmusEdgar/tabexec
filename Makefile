@@ -55,5 +55,5 @@ commodity.o : $(MAINHEADER) $(CONFHEADER)
 
 .PHONY : clean
 clean :
-	-rm damenu $(OBJECTS) $(TEMPS) $(LOGS)
+	-rm tabexec $(OBJECTS) $(TEMPS) $(LOGS)
 

@@ -54,7 +54,7 @@ struct item {
 
 static struct item *items = NULL;
 static struct item *matches, *matchend;
-static struct item *curr, *sel;
+static struct item *curr, *sel = NULL;
 static char text[FN_MAX_LENGTH] = "";
 
 int main(void);
@@ -421,7 +421,7 @@ static int handlekeys(void)
 		case IDCMP_GADGETDOWN:
 			break;
 		case IDCMP_GADGETUP:
-			if (((struct StringInfo *)dawin->FirstGadget->SpecialInfo)->NumChars > 0) {
+			if ((sel) && (((struct StringInfo *)dawin->FirstGadget->SpecialInfo)->NumChars > 0)) {
 				exec_match(((struct StringInfo *)dawin->FirstGadget->SpecialInfo)->Buffer);
 			}
 			state = DONE;
@@ -445,16 +445,13 @@ static int exec_match(unsigned char *em)
         struct TagItem stags[5];
         long int file;
 	unsigned char conline[FN_MAX_LENGTH];
-	unsigned char tmpem[FN_MAX_LENGTH];
+	unsigned char dem[FN_MAX_LENGTH];
 
 	(void)snprintf((char *)conline, TT_MAX_LENGTH, "%s%s%s", DEFCON_PRE, em, DEFCON_POST);
-	if (sel) {
-		if (paths[sel->pathid][strnlen(paths[sel->pathid], FN_MAX_LENGTH)-1U] == ':') {
-			(void)snprintf((char *)tmpem, FN_MAX_LENGTH, "%s%s", paths[sel->pathid], em);
-		} else {
-			(void)snprintf((char *)tmpem, FN_MAX_LENGTH, "%s%s%s", paths[sel->pathid], "/", em);
-		}
-		em = tmpem;
+	if (paths[sel->pathid][strnlen(paths[sel->pathid], FN_MAX_LENGTH)-1U] == ':') {
+		(void)snprintf((char *)dem, FN_MAX_LENGTH, "%s%s", paths[sel->pathid], em);
+	} else {
+		(void)snprintf((char *)dem, FN_MAX_LENGTH, "%s%s%s", paths[sel->pathid], "/", em);
 	}
 
         if ((file = Open(conline, MODE_NEWFILE))) {
@@ -469,7 +466,7 @@ static int exec_match(unsigned char *em)
                 stags[3].ti_Data = TRUE; //-V2568
                 stags[4].ti_Tag = TAG_DONE; //-V2568
 
-                if ((SystemTagList(em, stags)) == -1) {
+                if ((SystemTagList(dem, stags)) == -1) {
                         return RUNNING;
                 }
 
@@ -558,12 +555,17 @@ static unsigned long hook_routine(__attribute__((unused)) struct Hook *hook, str
 		if (sgw->Code == ESCAPE_C) { //-V536
 			Signal(maintask, deadsig);
 		}
+		if (match_on && sgw->Code == ' ') {
+			sel = matches;
+			return(return_code);
+		}
 		if ((sgw->EditOp == REPLACE_C) || (sgw->EditOp == INSERT_C)) {
-			if((match_to_win(sgw->StringInfo->Buffer) == DONE)) {
+			if((match_to_win(sgw->WorkBuffer) == DONE)) {
 				Signal(maintask, deadsig);
 			}
 			match_on = true; //-V2568
 			tabc = 0;
+			return(return_code);
 		}
 		if (match_on) {
 			if (sgw->Code == PLUS_C) {
@@ -583,7 +585,7 @@ static unsigned long hook_routine(__attribute__((unused)) struct Hook *hook, str
 				sgw->NumChars = sgw->BufferPos = bufmov(sgw->WorkBuffer, curr->text);
 				return(return_code);
 			}
-			if (sgw->Code == TAB_C) {
+			if (sgw->Code == TAB_C && matches) {
 				tabc++;
 				if (tabc <= 1) {
 					sel = matches;
@@ -603,10 +605,12 @@ static unsigned long hook_routine(__attribute__((unused)) struct Hook *hook, str
 				tabc = 0;
 				if (sgw->BufferPos == 0) {
 					RectFill(dawin->RPort, stext.LeftEdge, 0, screen->Width, winh);
+					sel = NULL;
 				} else {
-					if((match_to_win(sgw->StringInfo->Buffer) == DONE)) {
+					if((match_to_win(sgw->WorkBuffer) == DONE)) {
 						Signal(maintask, deadsig);
 					}
+					sel = NULL;
 				}
 				return(return_code);
 			}
