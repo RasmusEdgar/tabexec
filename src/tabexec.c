@@ -84,7 +84,7 @@ static short int textwidth(int lei, unsigned char * it);
 static void setdefaults(void);
 static int pup_paths(const char * s);
 static bool filter(const char *s);
-static bool match_on = false;
+//static bool match_on = false;
 static unsigned char *space;
 static unsigned char sep[] = " || ";
 static unsigned short spacew;
@@ -552,56 +552,52 @@ static unsigned long hook_routine(__attribute__((unused)) struct Hook *hook, str
 
 	return_code = ~0UL;
 	if (*msg == (unsigned long)SGH_KEY) {
-	if (sgw->Code) {
-		switch (msg) {
+		if ((sgw->EditOp == REPLACE_C) || (sgw->EditOp == INSERT_C)) {
+			if((match_to_win(sgw->WorkBuffer) == DONE)) {
+				Signal(maintask, deadsig);
+			}
+			tabc = 0;
+			return return_code;
+		}
+
+		switch (sgw->Code) {
 		case ESCAPE_C:
 			Signal(maintask, deadsig);
 			break;
 		case SPACE_C:
 			sel = matches;
 			break;
-		}
-		if ((sgw->EditOp == REPLACE_C) || (sgw->EditOp == INSERT_C)) {
-			if((match_to_win(sgw->WorkBuffer) == DONE)) {
-				Signal(maintask, deadsig);
-			}
-			tabc = 0;
-			return(return_code);
-		}
-		if (sgw->Code == PLUS_C) {
+		case PLUS_C:
 			curr++;
 			if (curr->text == NULL) {
 				curr = matches;
 			}
 			sgw->NumChars = sgw->BufferPos = bufmov(sgw->WorkBuffer, curr->text);
-			return(return_code);
-		}
-		if (sgw->Code == MINUS_C) {
+			break;
+		case MINUS_C:
 			if (--curr != NULL) {
 				if ((strnlen(curr->text, FN_MAX_LENGTH)) == 0U) {
 					curr = matches;
 				}
 			}
-			sgw->NumChars = sgw->BufferPos = bufmov(sgw->WorkBuffer, curr->text);
-			return(return_code);
-		}
-		if (sgw->Code == TAB_C && matches) {
-			tabc++;
-			if (tabc <= 1) {
-				sel = matches;
-				sgw->NumChars = sgw->BufferPos = bufmov(sgw->WorkBuffer, matches->text);
-			} else {
-				curr++;
-				if (curr->text == NULL) {
+			break;
+		case TAB_C:
+			if (sgw->NumChars > 0) {
+				if (tabc == 0) {
+					tabc++;
+					sel = matches;
+					sgw->NumChars = sgw->BufferPos = bufmov(sgw->WorkBuffer, matches->text);
+				} else {
+					curr++;
+					if (curr->text == NULL) {
 						curr = matches;
+					}
+					sel = curr;
+					sgw->NumChars = sgw->BufferPos = bufmov(sgw->WorkBuffer, curr->text);
 				}
-				sel = curr;
-				sgw->NumChars = sgw->BufferPos = bufmov(sgw->WorkBuffer, curr->text);
 			}
-
-			return(return_code);
-		}
-		if (sgw->Code == BACKSPACE_C) {
+			break;
+		case BACKSPACE_C:
 			tabc = 0;
 			if (sgw->BufferPos == 0) {
 				RectFill(dawin->RPort, stext.LeftEdge, 0, screen->Width, winh);
@@ -612,14 +608,17 @@ static unsigned long hook_routine(__attribute__((unused)) struct Hook *hook, str
 				}
 				sel = NULL;
 			}
-			return(return_code);
+			break;
+		default:
+			// Do nothing
+			break;
 		}
 	} else {
 		// UNKNOWN COMMAND
 		return_code = 0UL;
-    	}
+	}
 
-	return(return_code);
+	return return_code;
 }
 
 short bufmov(unsigned char *wb, char *s)
