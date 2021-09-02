@@ -67,6 +67,7 @@
 #define MINUS_C (unsigned char)'\014' //ctrl-l
 #define TAB_C (unsigned char)'\t'
 #define BACKSPACE_C (unsigned char)'\b'
+#define SPACE_C (unsigned char)' '
 #define REPLACE_C (unsigned char)(0x0007)
 #define INSERT_C (unsigned char)(0x0008)
 

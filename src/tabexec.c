@@ -552,12 +552,14 @@ static unsigned long hook_routine(__attribute__((unused)) struct Hook *hook, str
 
 	return_code = ~0UL;
 	if (*msg == (unsigned long)SGH_KEY) {
-		if (sgw->Code == ESCAPE_C) { //-V536
+	if (sgw->Code) {
+		switch (msg) {
+		case ESCAPE_C:
 			Signal(maintask, deadsig);
-		}
-		if (match_on && sgw->Code == (unsigned char)' ') {
+			break;
+		case SPACE_C:
 			sel = matches;
-			return(return_code);
+			break;
 		}
 		if ((sgw->EditOp == REPLACE_C) || (sgw->EditOp == INSERT_C)) {
 			if((match_to_win(sgw->WorkBuffer) == DONE)) {
