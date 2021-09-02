@@ -555,7 +555,7 @@ static unsigned long hook_routine(__attribute__((unused)) struct Hook *hook, str
 		if (sgw->Code == ESCAPE_C) { //-V536
 			Signal(maintask, deadsig);
 		}
-		if (match_on && sgw->Code == ' ') {
+		if (match_on && sgw->Code == (unsigned char)' ') {
 			sel = matches;
 			return(return_code);
 		}
@@ -563,57 +563,54 @@ static unsigned long hook_routine(__attribute__((unused)) struct Hook *hook, str
 			if((match_to_win(sgw->WorkBuffer) == DONE)) {
 				Signal(maintask, deadsig);
 			}
-			match_on = true; //-V2568
 			tabc = 0;
 			return(return_code);
 		}
-		if (match_on) {
-			if (sgw->Code == PLUS_C) {
-				curr++;
-				if (curr->text == NULL) {
+		if (sgw->Code == PLUS_C) {
+			curr++;
+			if (curr->text == NULL) {
+				curr = matches;
+			}
+			sgw->NumChars = sgw->BufferPos = bufmov(sgw->WorkBuffer, curr->text);
+			return(return_code);
+		}
+		if (sgw->Code == MINUS_C) {
+			if (--curr != NULL) {
+				if ((strnlen(curr->text, FN_MAX_LENGTH)) == 0U) {
 					curr = matches;
 				}
-				sgw->NumChars = sgw->BufferPos = bufmov(sgw->WorkBuffer, curr->text);
-				return(return_code);
 			}
-			if (sgw->Code == MINUS_C) {
-				if (--curr != NULL) {
-					if ((strnlen(curr->text, FN_MAX_LENGTH)) == 0U) {
+			sgw->NumChars = sgw->BufferPos = bufmov(sgw->WorkBuffer, curr->text);
+			return(return_code);
+		}
+		if (sgw->Code == TAB_C && matches) {
+			tabc++;
+			if (tabc <= 1) {
+				sel = matches;
+				sgw->NumChars = sgw->BufferPos = bufmov(sgw->WorkBuffer, matches->text);
+			} else {
+				curr++;
+				if (curr->text == NULL) {
 						curr = matches;
-					}
 				}
+				sel = curr;
 				sgw->NumChars = sgw->BufferPos = bufmov(sgw->WorkBuffer, curr->text);
-				return(return_code);
 			}
-			if (sgw->Code == TAB_C && matches) {
-				tabc++;
-				if (tabc <= 1) {
-					sel = matches;
-					sgw->NumChars = sgw->BufferPos = bufmov(sgw->WorkBuffer, matches->text);
-				} else {
-					curr++;
-					if (curr->text == NULL) {
-						curr = matches;
-					}
-					sel = curr;
-					sgw->NumChars = sgw->BufferPos = bufmov(sgw->WorkBuffer, curr->text);
-				}
 
-				return(return_code);
-			}
-			if (sgw->Code == BACKSPACE_C) {
-				tabc = 0;
-				if (sgw->BufferPos == 0) {
-					RectFill(dawin->RPort, stext.LeftEdge, 0, screen->Width, winh);
-					sel = NULL;
-				} else {
-					if((match_to_win(sgw->WorkBuffer) == DONE)) {
-						Signal(maintask, deadsig);
-					}
-					sel = NULL;
+			return(return_code);
+		}
+		if (sgw->Code == BACKSPACE_C) {
+			tabc = 0;
+			if (sgw->BufferPos == 0) {
+				RectFill(dawin->RPort, stext.LeftEdge, 0, screen->Width, winh);
+				sel = NULL;
+			} else {
+				if((match_to_win(sgw->WorkBuffer) == DONE)) {
+					Signal(maintask, deadsig);
 				}
-				return(return_code);
+				sel = NULL;
 			}
+			return(return_code);
 		}
 	} else {
 		// UNKNOWN COMMAND
