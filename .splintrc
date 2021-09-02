@@ -1,0 +1,8 @@
+#-booltype BOOL
+-weak
+-D__stdargs=
+-D__saveds=
++ignoresigns
+-syntax
+-type
+-unrecog
