@@ -408,10 +408,8 @@ static int handlekeys(void)
 {
 	struct IntuiMessage *message;
 	int state = RUNNING;
-	unsigned char stribuf[FN_MAX_LENGTH];
+	unsigned char *stribuf = ((struct StringInfo *)dawin->FirstGadget->SpecialInfo)->Buffer;
 	int strinc = ((struct StringInfo *)dawin->FirstGadget->SpecialInfo)->NumChars;
-
-	(void)snprintf((char *)stribuf, FN_MAX_LENGTH, "%s", ((struct StringInfo *)dawin->FirstGadget->SpecialInfo)->Buffer);
 
 	while (NULL != (message = (struct IntuiMessage *)GetMsg(dawin->UserPort))) { //-V2545
 		unsigned long class  = message->Class;
@@ -426,7 +424,11 @@ static int handlekeys(void)
 		case IDCMP_GADGETDOWN:
 			break;
 		case IDCMP_GADGETUP:
-			if ((sel) && (strinc > 0)) {
+			if ((sel) && (!custom_exec_n) && (strinc > 0)) {
+				printf("Normal exec\n");
+				exec_match((unsigned char *)sel->text);
+			} else if ((sel) && (custom_exec_n) && (strinc > 0)) {
+				printf("Custom exec\n");
 				exec_match(stribuf);
 			}
 			state = DONE;
@@ -609,7 +611,7 @@ static unsigned long hook_routine(__attribute__((unused)) struct Hook *hook, str
 				break;
 			}
 			if (sgw->NumChars > 0) {
-				if (tabc <= 1) {
+				if (tabc == 0) {
 					tabc++;
 					sel = matches;
 					sgw->NumChars = sgw->BufferPos = bufmov(sgw->WorkBuffer, matches->text);
@@ -739,9 +741,9 @@ static int match(void)
 
 static void freetext(void)
 {
-	struct item *item;
-	for (item = items; item && item->text; item++) {
-		free(item->text);
+	for (size_t i = 0; i < (sizeof(*items)); i++) {
+		free(&items[i].text);
+		free(&items[i]);
 	}
 	free(items);
 }
