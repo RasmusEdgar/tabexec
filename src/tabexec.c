@@ -84,7 +84,7 @@ static short int textwidth(int lei, unsigned char * it);
 static void setdefaults(void);
 static int pup_paths(const char * s);
 static bool filter(const char *s);
-//static bool match_on = false;
+static int custom_exec_n = 0;
 static unsigned char *space;
 static unsigned char sep[] = " || ";
 static unsigned short spacew;
@@ -147,6 +147,7 @@ int main(void)
 		}
 	}
 
+	//free(matches);
 	cleanup();
 	return state;
 }
@@ -407,6 +408,8 @@ static int handlekeys(void)
 {
 	struct IntuiMessage *message;
 	int state = RUNNING;
+	unsigned char *stribuf = ((struct StringInfo *)dawin->FirstGadget->SpecialInfo)->Buffer;
+	int strinc = ((struct StringInfo *)dawin->FirstGadget->SpecialInfo)->NumChars;
 
 	while (NULL != (message = (struct IntuiMessage *)GetMsg(dawin->UserPort))) { //-V2545
 		unsigned long class  = message->Class;
@@ -421,8 +424,12 @@ static int handlekeys(void)
 		case IDCMP_GADGETDOWN:
 			break;
 		case IDCMP_GADGETUP:
-			if ((sel) && (((struct StringInfo *)dawin->FirstGadget->SpecialInfo)->NumChars > 0)) {
-				exec_match(((struct StringInfo *)dawin->FirstGadget->SpecialInfo)->Buffer);
+			if ((sel) && (!custom_exec_n) && (strinc > 0)) {
+				printf("Normal exec\n");
+				exec_match((unsigned char *)sel->text);
+			} else if ((sel) && (custom_exec_n) && (strinc > 0)) {
+				printf("Custom exec\n");
+				exec_match(stribuf);
 			}
 			state = DONE;
 			break;
@@ -553,11 +560,14 @@ static unsigned long hook_routine(__attribute__((unused)) struct Hook *hook, str
 	return_code = ~0UL;
 	if (*msg == (unsigned long)SGH_KEY) {
 		if ((sgw->EditOp == REPLACE_C) || (sgw->EditOp == INSERT_C)) {
-			if((match_to_win(sgw->WorkBuffer) == DONE)) {
-				Signal(maintask, deadsig);
+			if (!custom_exec_n) {
+				if((match_to_win(sgw->WorkBuffer) == DONE)) {
+					Signal(maintask, deadsig);
+				}
+				sel = matches;
 			}
 			tabc = 0;
-			return return_code;
+			//return return_code;
 		}
 
 		switch (sgw->Code) {
@@ -565,23 +575,41 @@ static unsigned long hook_routine(__attribute__((unused)) struct Hook *hook, str
 			Signal(maintask, deadsig);
 			break;
 		case SPACE_C:
-			sel = matches;
+			custom_exec_n = sgw->BufferPos;
 			break;
 		case PLUS_C:
+			if (custom_exec_n < sgw->BufferPos) {
+				custom_exec_n = 0;
+			} else {
+				break;
+			}
 			curr++;
 			if (curr->text == NULL) {
 				curr = matches;
 			}
+			sel = curr;
 			sgw->NumChars = sgw->BufferPos = bufmov(sgw->WorkBuffer, curr->text);
 			break;
 		case MINUS_C:
+			if (custom_exec_n < sgw->BufferPos) {
+				custom_exec_n = 0;
+			} else {
+				break;
+			}
 			if (--curr != NULL) {
 				if ((strnlen(curr->text, FN_MAX_LENGTH)) == 0U) {
 					curr = matches;
 				}
 			}
+			sel = curr;
+			sgw->NumChars = sgw->BufferPos = bufmov(sgw->WorkBuffer, curr->text);
 			break;
 		case TAB_C:
+			if (custom_exec_n < sgw->BufferPos) {
+				custom_exec_n = 0;
+			} else {
+				break;
+			}
 			if (sgw->NumChars > 0) {
 				if (tabc == 0) {
 					tabc++;
@@ -599,6 +627,11 @@ static unsigned long hook_routine(__attribute__((unused)) struct Hook *hook, str
 			break;
 		case BACKSPACE_C:
 			tabc = 0;
+			if (custom_exec_n < sgw->BufferPos) {
+				custom_exec_n = 0;
+			} else {
+				break;
+			}
 			if (sgw->BufferPos == 0) {
 				RectFill(dawin->RPort, stext.LeftEdge, 0, screen->Width, winh);
 				sel = NULL;
@@ -606,7 +639,7 @@ static unsigned long hook_routine(__attribute__((unused)) struct Hook *hook, str
 				if((match_to_win(sgw->WorkBuffer) == DONE)) {
 					Signal(maintask, deadsig);
 				}
-				sel = NULL;
+				sel = matches;
 			}
 			break;
 		default:
