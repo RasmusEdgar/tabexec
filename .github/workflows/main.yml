@@ -1,0 +1,26 @@
+name: cross-compile tabexec
+
+on:
+  push:
+    tags-ignore:
+      - '*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    if: "contains(github.event.commits[0].message, '[build]')"
+    container:
+      image: docker.pkg.github.com/rasmusedgar/tabexec/tabexecbuild:latest
+      credentials:
+        username: rasmusedgar
+        password: ${{ secrets.EDGAR_TOKEN }}
+    steps:
+      - uses: actions/checkout@v2
+      - name: Build tabexec 
+        run: make all
+      - name: Upload artifact 
+        uses: actions/upload-artifact@v2
+        with:
+          name: tabexec
+          path: tabexec
+          retention-days: 1
