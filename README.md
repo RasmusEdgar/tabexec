@@ -4,7 +4,7 @@ Launcher for AmigaOS 3.x, with tab and auto completion.
 
 Tabexec is meant to be used as a process launcher.
 
-Tabexec is inspired by Dmenu by suckless.org
+Tabexec is inspired by Dmenu by suckless.org.
 
 ## Configuration and ToolTypes
 
