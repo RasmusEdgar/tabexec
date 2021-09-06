@@ -97,6 +97,7 @@ static char *freepaths, *ppath;
 static int pathc = 0;
 static int exei = 0;
 static int tabc = 0;
+static unsigned long pstack_size = 0;
 
 int main(void)
 {
@@ -147,7 +148,6 @@ int main(void)
 		}
 	}
 
-	//free(matches);
 	cleanup();
 	return state;
 }
@@ -158,6 +158,7 @@ static void setdefaults(void)
 	colors.bpen[0] = DEFAULT_BPEN;
 	colors.fpen_sep[0] = DEFAULT_FPEN;
 	colors.bpen_sep[0] = DEFAULT_FPEN;
+	pstack_size = DEFAULT_STACK;
 }
 
 static int pup_paths(const char * s)
@@ -209,6 +210,9 @@ static int attachtooltypes(void)
 					break;
 				case BPEN_SEP_ID:
 					colors.bpen_sep[0] = (unsigned char)strtoul((const char *)tt_optvalue, (char **)NULL, 10);
+					break;
+				case PSTACK_ID:
+					pstack_size = (unsigned char)strtoul((const char *)tt_optvalue, (char **)NULL, 10);
 					break;
                                 default:
                                         // Do nothing
@@ -424,11 +428,7 @@ static int handlekeys(void)
 		case IDCMP_GADGETDOWN:
 			break;
 		case IDCMP_GADGETUP:
-			if ((sel) && (!custom_exec_n) && (strinc > 0)) {
-				printf("Normal exec\n");
-				exec_match((unsigned char *)sel->text);
-			} else if ((sel) && (custom_exec_n) && (strinc > 0)) {
-				printf("Custom exec\n");
+			if ((sel) && (strinc > 0)) {
 				exec_match(stribuf);
 			}
 			state = DONE;
@@ -449,7 +449,7 @@ static int handlekeys(void)
 
 static int exec_match(unsigned char *em)
 {
-        struct TagItem stags[5];
+        struct TagItem stags[6];
         long int file;
 	unsigned char conline[FN_MAX_LENGTH];
 	unsigned char dem[FN_MAX_LENGTH];
@@ -471,7 +471,10 @@ static int exec_match(unsigned char *em)
                 stags[2].ti_Data = TRUE; //-V2568
                 stags[3].ti_Tag = SYS_UserShell; //-V2544 //-V2568
                 stags[3].ti_Data = TRUE; //-V2568
-                stags[4].ti_Tag = TAG_DONE; //-V2568
+                stags[4].ti_Tag = NP_StackSize; //-V2544 //-V2568
+                //stags[4].ti_Data = 32768; //-V2568
+                stags[4].ti_Data = pstack_size; //-V2568
+                stags[5].ti_Tag = TAG_DONE; //-V2568
 
                 if ((SystemTagList(dem, stags)) == -1) {
                         return RUNNING;
@@ -560,7 +563,7 @@ static unsigned long hook_routine(__attribute__((unused)) struct Hook *hook, str
 	return_code = ~0UL;
 	if (*msg == (unsigned long)SGH_KEY) {
 		if ((sgw->EditOp == REPLACE_C) || (sgw->EditOp == INSERT_C)) {
-			if (!custom_exec_n) {
+			if (custom_exec_n == 0) {
 				if((match_to_win(sgw->WorkBuffer) == DONE)) {
 					Signal(maintask, deadsig);
 				}
@@ -575,7 +578,9 @@ static unsigned long hook_routine(__attribute__((unused)) struct Hook *hook, str
 			Signal(maintask, deadsig);
 			break;
 		case SPACE_C:
-			custom_exec_n = sgw->BufferPos;
+			if (custom_exec_n == 0) {
+				custom_exec_n = sgw->BufferPos;
+			}
 			break;
 		case PLUS_C:
 			if (custom_exec_n < sgw->BufferPos) {
@@ -632,6 +637,7 @@ static unsigned long hook_routine(__attribute__((unused)) struct Hook *hook, str
 			} else {
 				break;
 			}
+
 			if (sgw->BufferPos == 0) {
 				RectFill(dawin->RPort, stext.LeftEdge, 0, screen->Width, winh);
 				sel = NULL;
