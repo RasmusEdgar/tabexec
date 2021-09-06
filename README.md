@@ -1,4 +1,4 @@
-# tabexec
+# Tabexec
 
 Launcher for AmigaOS 3.x, with tab and auto completion.
 
