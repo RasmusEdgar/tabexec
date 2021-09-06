@@ -7,7 +7,7 @@ SOURCES = src/tabexec.c
 OBJECTS = $(SOURCES:.c=.o)
 CFLAGSSTRICT =-fbaserel -pedantic -std=c11 -ggdb3 -O0 -Wall -Wextra -Wformat=2 -Wmissing-include-dirs -Winit-self -Wswitch-default -Wswitch-enum -Wunused-parameter -Wfloat-equal -Wundef -Wshadow -Wlarger-than-1000 -Wunsafe-loop-optimizations -Wbad-function-cast -Wcast-align -Wconversion -Wlogical-op -Waggregate-return -Wstrict-prototypes -Wold-style-definition -Wmissing-prototypes -Wmissing-declarations -Wpacked -Wpadded -Wredundant-decls -Wnested-externs -Wunreachable-code -Winline -Winvalid-pch -Wvolatile-register-var -Wstrict-aliasing=2 -Wstrict-overflow=2 -Wtraditional-conversion -Wwrite-strings -noixemul -save-temps=obj
 CC = m68k-amigaos-gcc
-CFLAGS =-std=c11 -Os -noixemul -fbaserel -Wall -Wextra -s -fomit-frame-pointer -mtune=68020-60
+CFLAGS =-std=c11 -Os -noixemul -fbaserel -Wall -Wextra -s -fomit-frame-pointer
 MAINHEADER = include/tabexec.h
 HEADERS = $(MAINHEADER)
 CPPLINTCMD = cpplint

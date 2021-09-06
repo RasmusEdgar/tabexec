@@ -39,7 +39,6 @@
 #define MAX(A, B)               ((A) > (B) ? (A) : (B))
 
 #define MYSTRGADWIDTH (215)
-#define MYSTRGADHEIGHT (8)
 
 #define SG_STRLEN     (44)
 #define INIT_LATER      0
@@ -59,6 +58,7 @@
 #define BPEN_ID 102
 #define FPEN_SEP_ID 103
 #define BPEN_SEP_ID 104
+#define PSTACK_ID 105
 
 #define DEFAULT_PATH "System:C,System:Tools"
 
@@ -67,11 +67,14 @@
 #define MINUS_C (unsigned char)'\014' //ctrl-l
 #define TAB_C (unsigned char)'\t'
 #define BACKSPACE_C (unsigned char)'\b'
+#define SPACE_C (unsigned char)' '
 #define REPLACE_C (unsigned char)(0x0007)
 #define INSERT_C (unsigned char)(0x0008)
 
 #define DEFAULT_FPEN 3U
 #define DEFAULT_BPEN 1U
+
+#define DEFAULT_STACK (unsigned long)32768
 
 struct ExecBase *SysBase;
 struct ExAllData *tead, *ead, *buffer;
@@ -140,6 +143,7 @@ char TYPE_FPEN[] = "FPEN";
 char TYPE_BPEN[] = "BPEN";
 char TYPE_FPEN_SEP[] = "FPEN_SEP";
 char TYPE_BPEN_SEP[] = "BPEN_SEP";
+char TYPE_PSTACK[] = "PSTACK";
 
 Opts defopts[] = {
         { TYPE_PATHS, PATHS_ID, OPTTYPE_ID },
@@ -147,4 +151,5 @@ Opts defopts[] = {
         { TYPE_BPEN, BPEN_ID, OPTTYPE_ID },
         { TYPE_FPEN_SEP, FPEN_SEP_ID, OPTTYPE_ID },
         { TYPE_BPEN_SEP, BPEN_SEP_ID, OPTTYPE_ID },
+        { TYPE_PSTACK, PSTACK_ID, OPTTYPE_ID },
 };

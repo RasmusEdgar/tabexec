@@ -84,7 +84,7 @@ static short int textwidth(int lei, unsigned char * it);
 static void setdefaults(void);
 static int pup_paths(const char * s);
 static bool filter(const char *s);
-static bool match_on = false;
+static int custom_exec_n = 0;
 static unsigned char *space;
 static unsigned char sep[] = " || ";
 static unsigned short spacew;
@@ -97,6 +97,7 @@ static char *freepaths, *ppath;
 static int pathc = 0;
 static int exei = 0;
 static int tabc = 0;
+static unsigned long pstack_size = 0;
 
 int main(void)
 {
@@ -157,6 +158,7 @@ static void setdefaults(void)
 	colors.bpen[0] = DEFAULT_BPEN;
 	colors.fpen_sep[0] = DEFAULT_FPEN;
 	colors.bpen_sep[0] = DEFAULT_FPEN;
+	pstack_size = DEFAULT_STACK;
 }
 
 static int pup_paths(const char * s)
@@ -208,6 +210,9 @@ static int attachtooltypes(void)
 					break;
 				case BPEN_SEP_ID:
 					colors.bpen_sep[0] = (unsigned char)strtoul((const char *)tt_optvalue, (char **)NULL, 10);
+					break;
+				case PSTACK_ID:
+					pstack_size = (unsigned char)strtoul((const char *)tt_optvalue, (char **)NULL, 10);
 					break;
                                 default:
                                         // Do nothing
@@ -407,6 +412,8 @@ static int handlekeys(void)
 {
 	struct IntuiMessage *message;
 	int state = RUNNING;
+	unsigned char *stribuf = ((struct StringInfo *)dawin->FirstGadget->SpecialInfo)->Buffer;
+	int strinc = ((struct StringInfo *)dawin->FirstGadget->SpecialInfo)->NumChars;
 
 	while (NULL != (message = (struct IntuiMessage *)GetMsg(dawin->UserPort))) { //-V2545
 		unsigned long class  = message->Class;
@@ -421,8 +428,8 @@ static int handlekeys(void)
 		case IDCMP_GADGETDOWN:
 			break;
 		case IDCMP_GADGETUP:
-			if ((sel) && (((struct StringInfo *)dawin->FirstGadget->SpecialInfo)->NumChars > 0)) {
-				exec_match(((struct StringInfo *)dawin->FirstGadget->SpecialInfo)->Buffer);
+			if ((sel) && (strinc > 0)) {
+				exec_match(stribuf);
 			}
 			state = DONE;
 			break;
@@ -442,7 +449,7 @@ static int handlekeys(void)
 
 static int exec_match(unsigned char *em)
 {
-        struct TagItem stags[5];
+        struct TagItem stags[6];
         long int file;
 	unsigned char conline[FN_MAX_LENGTH];
 	unsigned char dem[FN_MAX_LENGTH];
@@ -464,7 +471,10 @@ static int exec_match(unsigned char *em)
                 stags[2].ti_Data = TRUE; //-V2568
                 stags[3].ti_Tag = SYS_UserShell; //-V2544 //-V2568
                 stags[3].ti_Data = TRUE; //-V2568
-                stags[4].ti_Tag = TAG_DONE; //-V2568
+                stags[4].ti_Tag = NP_StackSize; //-V2544 //-V2568
+                //stags[4].ti_Data = 32768; //-V2568
+                stags[4].ti_Data = pstack_size; //-V2568
+                stags[5].ti_Tag = TAG_DONE; //-V2568
 
                 if ((SystemTagList(dem, stags)) == -1) {
                         return RUNNING;
@@ -552,42 +562,62 @@ static unsigned long hook_routine(__attribute__((unused)) struct Hook *hook, str
 
 	return_code = ~0UL;
 	if (*msg == (unsigned long)SGH_KEY) {
-		if (sgw->Code == ESCAPE_C) { //-V536
-			Signal(maintask, deadsig);
-		}
-		if (match_on && sgw->Code == ' ') {
-			sel = matches;
-			return(return_code);
-		}
 		if ((sgw->EditOp == REPLACE_C) || (sgw->EditOp == INSERT_C)) {
-			if((match_to_win(sgw->WorkBuffer) == DONE)) {
-				Signal(maintask, deadsig);
+			if (custom_exec_n == 0) {
+				if((match_to_win(sgw->WorkBuffer) == DONE)) {
+					Signal(maintask, deadsig);
+				}
+				sel = matches;
 			}
-			match_on = true; //-V2568
 			tabc = 0;
-			return(return_code);
+			//return return_code;
 		}
-		if (match_on) {
-			if (sgw->Code == PLUS_C) {
-				curr++;
-				if (curr->text == NULL) {
+
+		switch (sgw->Code) {
+		case ESCAPE_C:
+			Signal(maintask, deadsig);
+			break;
+		case SPACE_C:
+			if (custom_exec_n == 0) {
+				custom_exec_n = sgw->BufferPos;
+			}
+			break;
+		case PLUS_C:
+			if (custom_exec_n < sgw->BufferPos) {
+				custom_exec_n = 0;
+			} else {
+				break;
+			}
+			curr++;
+			if (curr->text == NULL) {
+				curr = matches;
+			}
+			sel = curr;
+			sgw->NumChars = sgw->BufferPos = bufmov(sgw->WorkBuffer, curr->text);
+			break;
+		case MINUS_C:
+			if (custom_exec_n < sgw->BufferPos) {
+				custom_exec_n = 0;
+			} else {
+				break;
+			}
+			if (--curr != NULL) {
+				if ((strnlen(curr->text, FN_MAX_LENGTH)) == 0U) {
 					curr = matches;
 				}
-				sgw->NumChars = sgw->BufferPos = bufmov(sgw->WorkBuffer, curr->text);
-				return(return_code);
 			}
-			if (sgw->Code == MINUS_C) {
-				if (--curr != NULL) {
-					if ((strnlen(curr->text, FN_MAX_LENGTH)) == 0U) {
-						curr = matches;
-					}
-				}
-				sgw->NumChars = sgw->BufferPos = bufmov(sgw->WorkBuffer, curr->text);
-				return(return_code);
+			sel = curr;
+			sgw->NumChars = sgw->BufferPos = bufmov(sgw->WorkBuffer, curr->text);
+			break;
+		case TAB_C:
+			if (custom_exec_n < sgw->BufferPos) {
+				custom_exec_n = 0;
+			} else {
+				break;
 			}
-			if (sgw->Code == TAB_C && matches) {
-				tabc++;
-				if (tabc <= 1) {
+			if (sgw->NumChars > 0) {
+				if (tabc == 0) {
+					tabc++;
 					sel = matches;
 					sgw->NumChars = sgw->BufferPos = bufmov(sgw->WorkBuffer, matches->text);
 				} else {
@@ -598,29 +628,36 @@ static unsigned long hook_routine(__attribute__((unused)) struct Hook *hook, str
 					sel = curr;
 					sgw->NumChars = sgw->BufferPos = bufmov(sgw->WorkBuffer, curr->text);
 				}
+			}
+			break;
+		case BACKSPACE_C:
+			tabc = 0;
+			if (custom_exec_n < sgw->BufferPos) {
+				custom_exec_n = 0;
+			} else {
+				break;
+			}
 
-				return(return_code);
-			}
-			if (sgw->Code == BACKSPACE_C) {
-				tabc = 0;
-				if (sgw->BufferPos == 0) {
-					RectFill(dawin->RPort, stext.LeftEdge, 0, screen->Width, winh);
-					sel = NULL;
-				} else {
-					if((match_to_win(sgw->WorkBuffer) == DONE)) {
-						Signal(maintask, deadsig);
-					}
-					sel = NULL;
+			if (sgw->BufferPos == 0) {
+				RectFill(dawin->RPort, stext.LeftEdge, 0, screen->Width, winh);
+				sel = NULL;
+			} else {
+				if((match_to_win(sgw->WorkBuffer) == DONE)) {
+					Signal(maintask, deadsig);
 				}
-				return(return_code);
+				sel = matches;
 			}
+			break;
+		default:
+			// Do nothing
+			break;
 		}
 	} else {
 		// UNKNOWN COMMAND
 		return_code = 0UL;
-    	}
+	}
 
-	return(return_code);
+	return return_code;
 }
 
 short bufmov(unsigned char *wb, char *s)
@@ -710,9 +747,9 @@ static int match(void)
 
 static void freetext(void)
 {
-	struct item *item;
-	for (item = items; item && item->text; item++) {
-		free(item->text);
+	for (size_t i = 0; i < (sizeof(*items)); i++) {
+		free(&items[i].text);
+		free(&items[i]);
 	}
 	free(items);
 }
