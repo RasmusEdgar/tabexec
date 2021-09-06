@@ -2,11 +2,11 @@ name: Package tabexec
 
 on:  
   push:
-    branches:
-      - main
     tags:
       - 'v*'
       - '!v*rc*'
+    branches:
+      - main
 
 jobs:
   pkgbuild-release:
