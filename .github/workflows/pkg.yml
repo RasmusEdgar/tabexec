@@ -4,8 +4,6 @@ on:
   push:
     tags:
       - 'v*rc*'
-    branches:
-      - main
 
 jobs:
   pkgbuild:
