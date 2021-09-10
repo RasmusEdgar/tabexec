@@ -85,12 +85,12 @@ static void setdefaults(void);
 static int pup_paths(const char * s);
 static bool filter(const char *s);
 static int custom_exec_n = 0;
-static unsigned char *space;
+static unsigned char space[] = " ";
 static unsigned char sep[] = " || ";
 static unsigned short spacew;
 static char deadsignum = -1;
 static unsigned long deadsig, uportsig;
-static struct Task *maintask = NULL;
+static struct Task *tabexectask = NULL;
 static unsigned short winh = 0;
 static char *paths[TT_MAX_LENGTH];
 static char *freepaths, *ppath;
@@ -129,7 +129,7 @@ int main(void)
         }
 
 	deadsig = 1UL << (unsigned long)deadsignum;
-	maintask = FindTask(NULL);
+	tabexectask = FindTask(NULL);
 
 	state = init_dawin();
 
@@ -180,7 +180,7 @@ static int attachtooltypes(void)
 	static struct DiskObject *diskobj;
 	static struct Library *iconbase;
 	static unsigned char iconlib[] = "icon.library";
-	static unsigned char diskobjname[] = "tabexec";
+	static unsigned char diskobjname[] = "PROGDIR:tabexec";
 
 	optarrsize = sizeof(defopts) / sizeof(*defopts);
 
@@ -335,7 +335,8 @@ static int init_dawin(void)
 		return DONE;
 	}
 
-	vars = (struct Vars *)AllocMem(sizeof(struct Vars), MEMF_CLEAR); //-V2544
+	//vars = (struct Vars *)AllocMem(sizeof(struct Vars), MEMF_CLEAR); //-V2544
+	vars = (struct Vars *)malloc(sizeof(struct Vars)); //-V2544
 	if (vars != NULL) {
 		vars->sgg_Extend.Pens[0] = (unsigned char)drawinfo->dri_Pens[FILLTEXTPEN];
 		vars->sgg_Extend.Pens[1] = (unsigned char)drawinfo->dri_Pens[FILLPEN];
@@ -388,7 +389,6 @@ static int init_dawin(void)
                 return DONE;
         }
 
-	*space = (unsigned char)' ';
 	spacew = (unsigned short)textwidth(0, space);
 
 	SetAPen(dawin->RPort, colors.fpen[0]);
@@ -397,7 +397,7 @@ static int init_dawin(void)
 	SetRast(dawin->RPort, colors.fpen[0]);
 	stext.LeftEdge = (short)((unsigned short)MYSTRGADWIDTH + spacew);
 	stext.IText = sep;
-	PrintIText(dawin->RPort, &stext, 0, 3);
+	PrintIText(dawin->RPort, &stext, LOFFS, TOFFS);
 	stext.LeftEdge = textwidth(stext.LeftEdge, sep);
 
 	ActivateWindow(dawin);
@@ -472,7 +472,6 @@ static int exec_match(unsigned char *em)
                 stags[3].ti_Tag = SYS_UserShell; //-V2544 //-V2568
                 stags[3].ti_Data = TRUE; //-V2568
                 stags[4].ti_Tag = NP_StackSize; //-V2544 //-V2568
-                //stags[4].ti_Data = 32768; //-V2568
                 stags[4].ti_Data = pstack_size; //-V2568
                 stags[5].ti_Tag = TAG_DONE; //-V2568
 
@@ -503,17 +502,22 @@ static int match_to_win(unsigned char *strbuf)
 
 	for (item = matches; item && item->text; ptext = (unsigned char *)item->text, item++) {
 		short spos = 0;
+		struct item *tmpitem = item;
 		if (item->text != matches->text) {
 			pos = (short)(textwidth(pos, ptext) + (short)spacew);
 		}
 
 		mtext.IText = (unsigned char *)item->text;
 		mtext.LeftEdge = pos;
-		PrintIText(dawin->RPort, &mtext, 0, 3);
+		PrintIText(dawin->RPort, &mtext, LOFFS, TOFFS);
 		spos = textwidth(pos, (unsigned char *)item->text);
+		tmpitem++;
+		if (dawin->Width < (textwidth(spos, (unsigned char *)tmpitem->text))) {
+			break;
+		}
 		mtext.IText = space;
 		mtext.LeftEdge = spos;
-		PrintIText(dawin->RPort, &mtext, 0, 3);
+		PrintIText(dawin->RPort, &mtext, LOFFS, TOFFS);
 	}
 	mtext.LeftEdge = 0;
 	return RUNNING;
@@ -565,7 +569,7 @@ static unsigned long hook_routine(__attribute__((unused)) struct Hook *hook, str
 		if ((sgw->EditOp == REPLACE_C) || (sgw->EditOp == INSERT_C)) {
 			if (custom_exec_n == 0) {
 				if((match_to_win(sgw->WorkBuffer) == DONE)) {
-					Signal(maintask, deadsig);
+					Signal(tabexectask, deadsig);
 				}
 				sel = matches;
 			}
@@ -575,7 +579,7 @@ static unsigned long hook_routine(__attribute__((unused)) struct Hook *hook, str
 
 		switch (sgw->Code) {
 		case ESCAPE_C:
-			Signal(maintask, deadsig);
+			Signal(tabexectask, deadsig);
 			break;
 		case SPACE_C:
 			if (custom_exec_n == 0) {
@@ -634,8 +638,6 @@ static unsigned long hook_routine(__attribute__((unused)) struct Hook *hook, str
 			tabc = 0;
 			if (custom_exec_n < sgw->BufferPos) {
 				custom_exec_n = 0;
-			} else {
-				break;
 			}
 
 			if (sgw->BufferPos == 0) {
@@ -643,7 +645,7 @@ static unsigned long hook_routine(__attribute__((unused)) struct Hook *hook, str
 				sel = NULL;
 			} else {
 				if((match_to_win(sgw->WorkBuffer) == DONE)) {
-					Signal(maintask, deadsig);
+					Signal(tabexectask, deadsig);
 				}
 				sel = matches;
 			}
@@ -772,6 +774,6 @@ static void cleanup(void)
 	freetext();
 	CloseWindow(dawin);
 	FreeSignal((long)deadsignum);
-	FreeMem(vars, sizeof(struct Vars));
+	free(vars);
 	FreeScreenDrawInfo(screen, drawinfo);
 }

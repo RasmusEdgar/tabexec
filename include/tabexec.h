@@ -40,8 +40,7 @@
 
 #define MYSTRGADWIDTH (215)
 
-#define SG_STRLEN     (44)
-#define INIT_LATER      0
+#define SG_STRLEN     (214)
 
 #define DONE 0
 #define RUNNING 1
@@ -74,7 +73,10 @@
 #define DEFAULT_FPEN 3U
 #define DEFAULT_BPEN 1U
 
-#define DEFAULT_STACK (unsigned long)32768
+#define DEFAULT_STACK (unsigned long)16384
+
+#define LOFFS 0
+#define TOFFS 3
 
 struct ExecBase *SysBase;
 struct ExAllData *tead, *ead, *buffer;
