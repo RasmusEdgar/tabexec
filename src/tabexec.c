@@ -335,8 +335,7 @@ static int init_dawin(void)
 		return DONE;
 	}
 
-	//vars = (struct Vars *)AllocMem(sizeof(struct Vars), MEMF_CLEAR); //-V2544
-	vars = (struct Vars *)malloc(sizeof(struct Vars)); //-V2544
+	vars = (struct Vars *)AllocMem(sizeof(struct Vars), MEMF_CLEAR); //-V2544
 	if (vars != NULL) {
 		vars->sgg_Extend.Pens[0] = (unsigned char)drawinfo->dri_Pens[FILLTEXTPEN];
 		vars->sgg_Extend.Pens[1] = (unsigned char)drawinfo->dri_Pens[FILLPEN];
@@ -774,6 +773,6 @@ static void cleanup(void)
 	freetext();
 	CloseWindow(dawin);
 	FreeSignal((long)deadsignum);
-	free(vars);
+	FreeMem(vars, sizeof(struct Vars));
 	FreeScreenDrawInfo(screen, drawinfo);
 }
