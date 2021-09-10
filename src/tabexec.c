@@ -180,7 +180,7 @@ static int attachtooltypes(void)
 	static struct DiskObject *diskobj;
 	static struct Library *iconbase;
 	static unsigned char iconlib[] = "icon.library";
-	static unsigned char diskobjname[] = "tabexec:tabexec";
+	static unsigned char diskobjname[] = "PROGDIR:tabexec";
 
 	optarrsize = sizeof(defopts) / sizeof(*defopts);
 
