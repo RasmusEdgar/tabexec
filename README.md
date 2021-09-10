@@ -15,10 +15,10 @@ Tabexec is configured through the AmigaOS ToolType system.
 Set paths with info ToolType PATHS, like so:
 
 ```
-PATHS=C:,System:System,System:Utilities
+PATHS=SYS:C:,SYS:,SYS:Utilities
 ```
 
-Default PATHS TT is set to: C:,System:Tools
+Default PATHS TT is set to: SYS:C:,SYS:Tools
 
 ### Stack size
 
