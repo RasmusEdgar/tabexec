@@ -85,7 +85,7 @@ static void setdefaults(void);
 static int pup_paths(const char * s);
 static bool filter(const char *s);
 static int custom_exec_n = 0;
-static unsigned char *space;
+static unsigned char space[] = " ";
 static unsigned char sep[] = " || ";
 static unsigned short spacew;
 static char deadsignum = -1;
@@ -180,7 +180,7 @@ static int attachtooltypes(void)
 	static struct DiskObject *diskobj;
 	static struct Library *iconbase;
 	static unsigned char iconlib[] = "icon.library";
-	static unsigned char diskobjname[] = "tabexec";
+	static unsigned char diskobjname[] = "tabexec:tabexec";
 
 	optarrsize = sizeof(defopts) / sizeof(*defopts);
 
@@ -389,7 +389,6 @@ static int init_dawin(void)
                 return DONE;
         }
 
-	*space = (unsigned char)' ';
 	spacew = (unsigned short)textwidth(0, space);
 
 	SetAPen(dawin->RPort, colors.fpen[0]);
@@ -775,7 +774,6 @@ static void cleanup(void)
 	freetext();
 	CloseWindow(dawin);
 	FreeSignal((long)deadsignum);
-	//FreeMem(vars, sizeof(struct Vars));
 	free(vars);
 	FreeScreenDrawInfo(screen, drawinfo);
 }
