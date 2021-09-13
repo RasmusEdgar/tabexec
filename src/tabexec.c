@@ -432,8 +432,9 @@ static int handlekeys(void)
 			}
 			state = DONE;
 			break;
-	        case IDCMP_VANILLAKEY:
+	        /*case IDCMP_VANILLAKEY:
             		break;
+			*/
 		case IDCMP_REFRESHWINDOW:
 			BeginRefresh(dawin);
 			EndRefresh(dawin, TRUE);
@@ -685,7 +686,8 @@ static int match(void)
         static char **toktmp = NULL;
         static int tokn = 0;
 
-        char buf[sizeof text], *s;
+        //char buf[sizeof text], *s;
+        char buf[FN_MAX_LENGTH], *s;
         int i, tokc = 0;
         size_t len, textsize;
         struct item *item, *lprefix, *lsubstr, *prefixend, *substrend;
@@ -748,7 +750,7 @@ static int match(void)
 
 static void freetext(void)
 {
-	for (size_t i = 0; i < (sizeof(*items)); i++) {
+	for (size_t i = 1; i < (sizeof(*items)); i++) {
 		free(&items[i].text);
 		free(&items[i]);
 	}

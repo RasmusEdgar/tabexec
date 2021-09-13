@@ -59,7 +59,7 @@
 #define BPEN_SEP_ID 104
 #define PSTACK_ID 105
 
-#define DEFAULT_PATH "SYS:C,SYS:Tools"
+#define DEFAULT_PATH "SYS:C,SYS:Utilities,SYS:Tools"
 
 #define ESCAPE_C (unsigned char)'\033'
 #define PLUS_C (unsigned char)'\012' //ctrl-j
