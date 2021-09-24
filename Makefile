@@ -11,7 +11,7 @@ CFLAGS =-std=c11 -Os -noixemul -fbaserel -Wall -Wextra -s -fomit-frame-pointer
 MAINHEADER = include/tabexec.h
 HEADERS = $(MAINHEADER)
 CPPLINTCMD = cpplint
-CPPLINTOPTS = --linelength 150 --filter=-whitespace/tab,-whitespace/comments,-whitespace/braces,-whitespace/indent,-readability/casting,-runtime/int,-build/header_guard,-runtime/threadsafe_fn
+CPPLINTOPTS = --linelength 150 --filter=-whitespace/tab,-whitespace/comments,-whitespace/braces,-whitespace/indent,-readability/casting,-runtime/int,-build/header_guard,-runtime/threadsafe_fn,-runtime/printf
 CPPCHECKCMD = cppcheck
 CPPCHECKOPTS = --enable=all
 FLAWCMD = flawfinder

@@ -45,6 +45,7 @@ THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.*/
+#define COUNT_OF(x) ((sizeof(x)/sizeof(0[x])) / ((size_t)(!(sizeof(x) % sizeof(0[x])))))
 
 struct item {
 	char *text;
@@ -72,7 +73,7 @@ static void unlockbasescreen(unsigned long *il, struct Screen **s);
 static unsigned long ilock;
 static int handlekeys(void);
 static int exec_match(unsigned char *em);
-static short bufmov(unsigned char *wb, char *s);
+static short bufmov(unsigned char **wb, char *s);
 static size_t strnlen(const char *s, size_t maxlen);
 static void cleanup(void);
 static struct Vars *vars;
@@ -88,8 +89,8 @@ static int custom_exec_n = 0;
 static unsigned char space[] = " ";
 static unsigned char sep[] = " || ";
 static unsigned short spacew;
-static char deadsignum = -1;
-static unsigned long deadsig, uportsig;
+static char deadsignum = -1, editsignum = -1;
+static unsigned long deadsig, editsig, uportsig;
 static struct Task *tabexectask = NULL;
 static unsigned short winh = 0;
 static char *paths[TT_MAX_LENGTH];
@@ -98,6 +99,8 @@ static int pathc = 0;
 static int exei = 0;
 static int tabc = 0;
 static unsigned long pstack_size = 0;
+static char **tokv = NULL, **toktmp = NULL;
+size_t items_size = 0;
 
 int main(void)
 {
@@ -124,25 +127,43 @@ int main(void)
 		}
 	}
 
+	if (items) {
+		items[exei].text = NULL;
+	}
+
         if ((deadsignum = AllocSignal(-1)) == (char)-1) {
                 return EXIT_FAILURE;
         }
 
-	deadsig = 1UL << (unsigned long)deadsignum;
+        if ((editsignum = AllocSignal(-1)) == (char)-1) {
+                return EXIT_FAILURE;
+        }
+
 	tabexectask = FindTask(NULL);
 
 	state = init_dawin();
 
 	if (state) {
+		deadsig = 1UL << (unsigned long)deadsignum;
+		editsig = 1UL << (unsigned long)editsignum;
 		uportsig = 1UL << dawin->UserPort->mp_SigBit;
+		unsigned long signals = deadsig | editsig | uportsig;
 
 		while(state) {
-			unsigned long signals = Wait(uportsig | deadsig);
-				if (signals & deadsig) {
+			unsigned long received = Wait(signals);
+				if (received & deadsig) {
 					state = DONE;
 				}
 
-				if (signals & uportsig) {
+				if (received & editsig) {
+					if (custom_exec_n == 0) {
+						state = match_to_win(vars->sgg_StrInfo.Extension->WorkBuffer);
+						sel = matches;
+					}
+					tabc = 0;
+				}
+
+				if (received & uportsig) {
 					state = handlekeys();
 				}
 		}
@@ -176,9 +197,9 @@ static int pup_paths(const char * s)
 static int attachtooltypes(void)
 {
 	int state = RUNNING;
-	size_t optarrsize;
-	static struct DiskObject *diskobj;
-	static struct Library *iconbase;
+	size_t optarrsize = 0U;
+	static struct DiskObject *diskobj = NULL;
+	static struct Library *iconbase = NULL;
 	static unsigned char iconlib[] = "icon.library";
 	static unsigned char diskobjname[] = "PROGDIR:tabexec";
 
@@ -227,10 +248,10 @@ static int attachtooltypes(void)
 
 static int getexecs(unsigned char *source, int pathid)
 {
-	struct DosLibrary *DOSBase;
+	struct DosLibrary *DOSBase = NULL;
 	struct ExAllControl *excontrol = NULL;
-	BPTR sourcelock;
-	LONG error;
+	BPTR sourcelock = 0L;
+	LONG error = 0L;
 	int state = RUNNING;
 	unsigned char dlib[] = "dos.library";
 	static struct item *tmpitems = NULL;
@@ -269,14 +290,18 @@ static int getexecs(unsigned char *source, int pathid)
 			}
 
 			char buf[sizeof text] = {'\0'};
-			size_t size = 0;
 			do {
 				char *p;
-				if (exei + 1 >= (int)(size / sizeof *items)) {
-					if (!(tmpitems = realloc(items, (size += (unsigned int)BUFFERSIZE)))) {
+				if (exei + 1 >= (int)(items_size / sizeof *items)) {
+					tmpitems = realloc(items, (items_size += (unsigned int)BUFFERSIZE));
+					if (tmpitems == NULL) {
 						return DONE;
+					} else if (items == tmpitems) {
+						free(tmpitems);
+						tmpitems = NULL;
 					} else {
 						items = tmpitems;
+						tmpitems = NULL;
 					}
 				}
 				if ((p = strchr(buf, '\n'))) {
@@ -284,6 +309,7 @@ static int getexecs(unsigned char *source, int pathid)
 				}
 				if (filter((const char *)ead->ed_Name)) {
 					if (!(items[exei].text = strdup((const char *)(ead->ed_Name)))) {
+						freetext();
 						return DONE;
 					}
 					items[exei].pathid = pathid;
@@ -294,7 +320,9 @@ static int getexecs(unsigned char *source, int pathid)
 		}
         }
 	FreeMem(buffer, BUFFERSIZE);
+	buffer = NULL;
 	FreeDosObject(DOS_EXALLCONTROL, excontrol);
+	UnLock(sourcelock);
         CloseLibrary((struct Library *) DOSBase); //-V2545
 	return state;
 }
@@ -305,13 +333,13 @@ static bool filter(const char *s)
 		const char *filter;
 	} filter_list[3];
 	int filters = 2;
-	int i;
+	int i = 0;
 
 	filter_list[0].filter = ".info";
 	filter_list[1].filter = "?.";
 	filter_list[2].filter = NULL;
 
-	for (i = 0; filter_list[i].filter; i++) {
+	for (; filter_list[i].filter; i++) {
 		if ((strstr(s, filter_list[i].filter) != NULL)) {
 			break;
 		}
@@ -328,6 +356,7 @@ static int init_dawin(void)
 {
         struct TagItem tagitem[8];
 	unsigned long dawin_h = 20;
+	short unsigned int *dfpen = NULL;
 
         lockbasescreen(&ilock, &screen);
 	if ((drawinfo = GetScreenDrawInfo(screen)) == 0) {
@@ -335,12 +364,16 @@ static int init_dawin(void)
 		return DONE;
 	}
 
+	dfpen = drawinfo->dri_Pens;
+
+	FreeScreenDrawInfo(screen, drawinfo);
+
 	vars = (struct Vars *)AllocMem(sizeof(struct Vars), MEMF_CLEAR); //-V2544
 	if (vars != NULL) {
-		vars->sgg_Extend.Pens[0] = (unsigned char)drawinfo->dri_Pens[FILLTEXTPEN];
-		vars->sgg_Extend.Pens[1] = (unsigned char)drawinfo->dri_Pens[FILLPEN];
-		vars->sgg_Extend.ActivePens[0] = (unsigned char)drawinfo->dri_Pens[FILLTEXTPEN];
-		vars->sgg_Extend.ActivePens[1] = (unsigned char)drawinfo->dri_Pens[FILLPEN];
+		vars->sgg_Extend.Pens[0] = (unsigned char)dfpen[FILLTEXTPEN];
+		vars->sgg_Extend.Pens[1] = (unsigned char)dfpen[FILLPEN];
+		vars->sgg_Extend.ActivePens[0] = (unsigned char)dfpen[FILLTEXTPEN];
+		vars->sgg_Extend.ActivePens[1] = (unsigned char)dfpen[FILLPEN];
 		vars->sgg_Extend.EditHook = &(vars->sgg_Hook);
 		vars->sgg_Extend.WorkBuffer = vars->sgg_WBuff;
 
@@ -376,7 +409,7 @@ static int init_dawin(void)
         tagitem[4].ti_Tag = WA_SmartRefresh; //-V2544 //-V2568
         tagitem[4].ti_Data = 1; //-V2568
         tagitem[5].ti_Tag = WA_IDCMP; //-V2544 //-V2568
-        tagitem[5].ti_Data = IDCMP_GADGETUP|STRINGIDCMP|IDCMP_ACTIVEWINDOW|IDCMP_REFRESHWINDOW|IDCMP_CHANGEWINDOW; //-V2544 //-V2568
+        tagitem[5].ti_Data = IDCMP_GADGETUP|IDCMP_ACTIVEWINDOW; //-V2544 //-V2568
 	tagitem[6].ti_Tag = WA_Gadgets; //-V2544 //-V2568
 	tagitem[6].ti_Data = (unsigned long)&(vars->sgg_Gadget);
         tagitem[7].ti_Tag = TAG_DONE; //-V2544 //-V2568
@@ -432,13 +465,6 @@ static int handlekeys(void)
 			}
 			state = DONE;
 			break;
-	        /*case IDCMP_VANILLAKEY:
-            		break;
-			*/
-		case IDCMP_REFRESHWINDOW:
-			BeginRefresh(dawin);
-			EndRefresh(dawin, TRUE);
-			break;
 		default:
 			// Default
 			break;
@@ -449,10 +475,10 @@ static int handlekeys(void)
 
 static int exec_match(unsigned char *em)
 {
-        struct TagItem stags[6];
-        long int file;
-	unsigned char conline[FN_MAX_LENGTH];
-	unsigned char dem[FN_MAX_LENGTH];
+        struct TagItem stags[5];
+        long int file = 0L;
+	unsigned char conline[FN_MAX_LENGTH] = "";
+	unsigned char dem[FN_MAX_LENGTH] = "";
 
 	(void)snprintf((char *)conline, TT_MAX_LENGTH, "%s%s%s", DEFCON_PRE, em, DEFCON_POST);
 	if (paths[sel->pathid][strnlen(paths[sel->pathid], FN_MAX_LENGTH)-1U] == ':') {
@@ -469,14 +495,12 @@ static int exec_match(unsigned char *em)
                 stags[1].ti_Data = 0; //-V2568
                 stags[2].ti_Tag = SYS_Asynch; //-V2544 //-V2568
                 stags[2].ti_Data = TRUE; //-V2568
-                stags[3].ti_Tag = SYS_UserShell; //-V2544 //-V2568
-                stags[3].ti_Data = TRUE; //-V2568
-                stags[4].ti_Tag = NP_StackSize; //-V2544 //-V2568
-                stags[4].ti_Data = pstack_size; //-V2568
-                stags[5].ti_Tag = TAG_DONE; //-V2568
+                stags[3].ti_Tag = NP_StackSize; //-V2544 //-V2568
+                stags[3].ti_Data = pstack_size; //-V2568
+                stags[4].ti_Tag = TAG_DONE; //-V2568
 
                 if ((SystemTagList(dem, stags)) == -1) {
-                        return RUNNING;
+                        return DONE;
                 }
 
                 return DONE;
@@ -487,7 +511,7 @@ static int exec_match(unsigned char *em)
 
 static int match_to_win(unsigned char *strbuf)
 {
-	struct item *item;
+	struct item *item = NULL;
 	unsigned char *ptext = NULL;
 	short pos = 0;
 
@@ -562,19 +586,12 @@ static void init_hook(struct Hook *hook, unsigned long (*ccode)(struct Hook *hoo
 
 static unsigned long hook_routine(__attribute__((unused)) struct Hook *hook, struct SGWork *sgw, unsigned long *msg)
 {
-	unsigned long return_code;
+	unsigned long return_code = ~0UL;
 
-	return_code = ~0UL;
 	if (*msg == (unsigned long)SGH_KEY) {
 		if ((sgw->EditOp == REPLACE_C) || (sgw->EditOp == INSERT_C)) {
-			if (custom_exec_n == 0) {
-				if((match_to_win(sgw->WorkBuffer) == DONE)) {
-					Signal(tabexectask, deadsig);
-				}
-				sel = matches;
-			}
-			tabc = 0;
-			//return return_code;
+			Signal(tabexectask, editsig);
+			return return_code;
 		}
 
 		switch (sgw->Code) {
@@ -593,11 +610,11 @@ static unsigned long hook_routine(__attribute__((unused)) struct Hook *hook, str
 				break;
 			}
 			curr++;
-			if (curr->text == NULL) {
+			if (curr->text == NULL && matches->text) {
 				curr = matches;
 			}
 			sel = curr;
-			sgw->NumChars = sgw->BufferPos = bufmov(sgw->WorkBuffer, curr->text);
+			sgw->NumChars = sgw->BufferPos = bufmov(&(sgw->WorkBuffer), curr->text);
 			break;
 		case MINUS_C:
 			if (custom_exec_n < sgw->BufferPos) {
@@ -605,13 +622,13 @@ static unsigned long hook_routine(__attribute__((unused)) struct Hook *hook, str
 			} else {
 				break;
 			}
-			if (--curr != NULL) {
+			if (--curr != NULL && matches->text) {
 				if ((strnlen(curr->text, FN_MAX_LENGTH)) == 0U) {
 					curr = matches;
 				}
 			}
 			sel = curr;
-			sgw->NumChars = sgw->BufferPos = bufmov(sgw->WorkBuffer, curr->text);
+			sgw->NumChars = sgw->BufferPos = bufmov(&(sgw->WorkBuffer), curr->text);
 			break;
 		case TAB_C:
 			if (custom_exec_n < sgw->BufferPos) {
@@ -619,18 +636,18 @@ static unsigned long hook_routine(__attribute__((unused)) struct Hook *hook, str
 			} else {
 				break;
 			}
-			if (sgw->NumChars > 0) {
+			if (sgw->NumChars > 0 && matches->text) {
 				if (tabc == 0) {
 					tabc++;
 					sel = matches;
-					sgw->NumChars = sgw->BufferPos = bufmov(sgw->WorkBuffer, matches->text);
+					sgw->NumChars = sgw->BufferPos = bufmov(&(sgw->WorkBuffer), matches->text);
 				} else {
 					curr++;
 					if (curr->text == NULL) {
 						curr = matches;
 					}
 					sel = curr;
-					sgw->NumChars = sgw->BufferPos = bufmov(sgw->WorkBuffer, curr->text);
+					sgw->NumChars = sgw->BufferPos = bufmov(&(sgw->WorkBuffer), curr->text);
 				}
 			}
 			break;
@@ -644,9 +661,7 @@ static unsigned long hook_routine(__attribute__((unused)) struct Hook *hook, str
 				RectFill(dawin->RPort, stext.LeftEdge, 0, screen->Width, winh);
 				sel = NULL;
 			} else {
-				if((match_to_win(sgw->WorkBuffer) == DONE)) {
-					Signal(tabexectask, deadsig);
-				}
+				Signal(tabexectask, editsig);
 				sel = matches;
 			}
 			break;
@@ -662,9 +677,9 @@ static unsigned long hook_routine(__attribute__((unused)) struct Hook *hook, str
 	return return_code;
 }
 
-short bufmov(unsigned char *wb, char *s)
+short bufmov(unsigned char **wb, char *s)
 {
-	return (short)snprintf((char *)wb, FN_MAX_LENGTH, "%s", (const char *)s);
+	return (short)snprintf((char *)*wb, FN_MAX_LENGTH, "%s", s);
 }
 
 static void appenditem(struct item *item, struct item **list, struct item **last)
@@ -682,12 +697,10 @@ static void appenditem(struct item *item, struct item **list, struct item **last
 
 static int match(void)
 {
-        static char **tokv = NULL;
-        static char **toktmp = NULL;
         static int tokn = 0;
 
-        //char buf[sizeof text], *s;
-        char buf[FN_MAX_LENGTH], *s;
+        char buf[sizeof text], *s;
+        //char buf[FN_MAX_LENGTH], *s;
         int i, tokc = 0;
         size_t len, textsize;
         struct item *item, *lprefix, *lsubstr, *prefixend, *substrend;
@@ -697,7 +710,6 @@ static int match(void)
         /* separate input text into tokens to be matched individually */
         for (s = strtok(buf, " "); s; tokv[tokc - 1] = s, s = strtok(NULL, " ")) {
                 if (++tokc > tokn && !(toktmp = realloc(tokv, (unsigned int)++tokn * (unsigned int)sizeof *tokv))) {
-			free(toktmp);
 			return DONE;
 		} else {
 			tokv = toktmp;
@@ -750,18 +762,21 @@ static int match(void)
 
 static void freetext(void)
 {
-	for (size_t i = 1; i < (sizeof(*items)); i++) {
-		free(&items[i].text);
-		free(&items[i]);
+	for (int i = 0; i < exei; i++) {
+		free(items[i].text);
+		items[i].text = NULL;
 	}
+	free(items->text);
+	items->text = NULL;
 	free(items);
+	items = NULL;
 }
 
 static size_t strnlen(const char *s, size_t maxlen)
 {
-        size_t len;
+        size_t len = 0U;
 
-        for (len = (size_t)0; len < maxlen; len++, s++) {
+        for (; len < maxlen; len++, s++) {
                 if (*s == '\0') {
                         break;
                 }
@@ -771,10 +786,11 @@ static size_t strnlen(const char *s, size_t maxlen)
 
 static void cleanup(void)
 {
+	free(*tokv);
+	CloseWindow(dawin);
 	free(freepaths);
 	freetext();
-	CloseWindow(dawin);
 	FreeSignal((long)deadsignum);
+	FreeSignal((long)editsignum);
 	FreeMem(vars, sizeof(struct Vars));
-	FreeScreenDrawInfo(screen, drawinfo);
 }
