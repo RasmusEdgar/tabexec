@@ -76,6 +76,7 @@ static int exec_match(unsigned char *em);
 static short bufmov(unsigned char **wb, char *s);
 static size_t strnlen(const char *s, size_t maxlen);
 static void cleanup(void);
+static void nukewin(void);
 static struct Vars *vars;
 static struct DrawInfo *drawinfo;
 static unsigned long hook_routine(struct Hook *hook, struct SGWork *sgw, unsigned long *msg);
@@ -199,15 +200,15 @@ static int attachtooltypes(void)
 	int state = RUNNING;
 	size_t optarrsize = 0U;
 	static struct DiskObject *diskobj = NULL;
-	static struct Library *iconbase = NULL;
-	static unsigned char iconlib[] = "icon.library";
+	//static struct Library *iconbase = NULL;
+	//static unsigned char iconlib[] = "icon.library";
 	static unsigned char diskobjname[] = "PROGDIR:tabexec";
 
 	optarrsize = sizeof(defopts) / sizeof(*defopts);
 
-        if (!(iconbase = OpenLibrary(iconlib, 37))) {
+        /*if (!(iconbase = OpenLibrary(iconlib, 37))) {
                 return DONE;
-        }
+        }*/
 
         if ((diskobj = GetDiskObject(diskobjname)) == NULL) {
                 return DONE;
@@ -241,28 +242,28 @@ static int attachtooltypes(void)
 			}
 		}
 	}
-	CloseLibrary(iconbase);
+	//CloseLibrary(iconbase);
 	FreeDiskObject(diskobj);
 	return state;
 }
 
 static int getexecs(unsigned char *source, int pathid)
 {
-	struct DosLibrary *DOSBase = NULL;
+	//struct DosLibrary *DOSBase = NULL;
 	struct ExAllControl *excontrol = NULL;
 	BPTR sourcelock = 0L;
 	LONG error = 0L;
 	int state = RUNNING;
-	unsigned char dlib[] = "dos.library";
+	//unsigned char dlib[] = "dos.library";
 	static struct item *tmpitems = NULL;
 
 	/* set up SysBase */
 	SysBase = (struct ExecBase *)(*((struct Library **) 4)); //-V2545
 
 	/* Fail silently if < 37 */
-	if (!(DOSBase = (struct DosLibrary *) OpenLibrary(dlib, 37))) { //-V2545
+	/*if (!(DOSBase = (struct DosLibrary *) OpenLibrary(dlib, 37))) { //-V2545
 		return DONE;
-	}
+	}*/
 
 	if (!(buffer = AllocMem(BUFFERSIZE, MEMF_CLEAR))) { //-V2544
 		return DONE;
@@ -276,7 +277,7 @@ static int getexecs(unsigned char *source, int pathid)
 	if (state == RUNNING && (excontrol = AllocDosObject(DOS_EXALLCONTROL, NULL))) {
 		excontrol->eac_LastKey = 0U;
 
-		bool exmore = ExAll(sourcelock, buffer, BUFFERSIZE, ED_NAME, excontrol);
+		bool exmore = ExAll(sourcelock, buffer, BUFFERSIZE, ED_TYPE, excontrol);
 		error = IoErr();
 
 		if ((!exmore && (error != ERROR_NO_MORE_ENTRIES))) {
@@ -307,7 +308,7 @@ static int getexecs(unsigned char *source, int pathid)
 				if ((p = strchr(buf, '\n'))) {
 					 *p = '\0';
 				}
-				if (filter((const char *)ead->ed_Name)) {
+				if ((filter((const char *)ead->ed_Name)) && (ead->ed_Type == ST_FILE)) {
 					if (!(items[exei].text = strdup((const char *)(ead->ed_Name)))) {
 						freetext();
 						return DONE;
@@ -321,9 +322,9 @@ static int getexecs(unsigned char *source, int pathid)
         }
 	FreeMem(buffer, BUFFERSIZE);
 	buffer = NULL;
-	FreeDosObject(DOS_EXALLCONTROL, excontrol);
 	UnLock(sourcelock);
-        CloseLibrary((struct Library *) DOSBase); //-V2545
+	FreeDosObject(DOS_EXALLCONTROL, excontrol);
+        //CloseLibrary((struct Library *) DOSBase); //-V2545
 	return state;
 }
 
@@ -786,11 +787,20 @@ static size_t strnlen(const char *s, size_t maxlen)
 
 static void cleanup(void)
 {
+	nukewin();
 	free(*tokv);
-	CloseWindow(dawin);
 	free(freepaths);
 	freetext();
 	FreeSignal((long)deadsignum);
 	FreeSignal((long)editsignum);
 	FreeMem(vars, sizeof(struct Vars));
+}
+
+static void nukewin(void)
+{
+	struct IntuiMessage *msg;
+	while ((msg = (struct IntuiMessage *)GetMsg(dawin->UserPort))) { //-V2545
+                ReplyMsg((struct Message *)msg); //-V2545
+        }
+	CloseWindow(dawin);
 }
