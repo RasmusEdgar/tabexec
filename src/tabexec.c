@@ -45,7 +45,6 @@ THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.*/
-#define COUNT_OF(x) ((sizeof(x)/sizeof(0[x])) / ((size_t)(!(sizeof(x) % sizeof(0[x])))))
 
 struct item {
 	char *text;
@@ -200,15 +199,9 @@ static int attachtooltypes(void)
 	int state = RUNNING;
 	size_t optarrsize = 0U;
 	static struct DiskObject *diskobj = NULL;
-	//static struct Library *iconbase = NULL;
-	//static unsigned char iconlib[] = "icon.library";
 	static unsigned char diskobjname[] = "PROGDIR:tabexec";
 
 	optarrsize = sizeof(defopts) / sizeof(*defopts);
-
-        /*if (!(iconbase = OpenLibrary(iconlib, 37))) {
-                return DONE;
-        }*/
 
         if ((diskobj = GetDiskObject(diskobjname)) == NULL) {
                 return DONE;
@@ -242,28 +235,19 @@ static int attachtooltypes(void)
 			}
 		}
 	}
-	//CloseLibrary(iconbase);
 	FreeDiskObject(diskobj);
 	return state;
 }
 
 static int getexecs(unsigned char *source, int pathid)
 {
-	//struct DosLibrary *DOSBase = NULL;
 	struct ExAllControl *excontrol = NULL;
 	BPTR sourcelock = 0L;
-	LONG error = 0L;
 	int state = RUNNING;
-	//unsigned char dlib[] = "dos.library";
 	static struct item *tmpitems = NULL;
 
 	/* set up SysBase */
 	SysBase = (struct ExecBase *)(*((struct Library **) 4)); //-V2545
-
-	/* Fail silently if < 37 */
-	/*if (!(DOSBase = (struct DosLibrary *) OpenLibrary(dlib, 37))) { //-V2545
-		return DONE;
-	}*/
 
 	if (!(buffer = AllocMem(BUFFERSIZE, MEMF_CLEAR))) { //-V2544
 		return DONE;
@@ -278,10 +262,9 @@ static int getexecs(unsigned char *source, int pathid)
 		excontrol->eac_LastKey = 0U;
 
 		bool exmore = ExAll(sourcelock, buffer, BUFFERSIZE, ED_TYPE, excontrol);
-		error = IoErr();
 
-		if ((!exmore && (error != ERROR_NO_MORE_ENTRIES))) {
-			state = DONE;
+		if ((!exmore) && (IoErr() != ERROR_NO_MORE_ENTRIES)) {
+			return DONE;
 		}
 
 		if (excontrol->eac_Entries != 0U) {
@@ -292,6 +275,9 @@ static int getexecs(unsigned char *source, int pathid)
 
 			char buf[sizeof text] = {'\0'};
 			do {
+				if ((!exmore) && (IoErr() != ERROR_NO_MORE_ENTRIES)) {
+					return DONE;
+				}
 				char *p;
 				if (exei + 1 >= (int)(items_size / sizeof *items)) {
 					tmpitems = realloc(items, (items_size += (unsigned int)BUFFERSIZE));
@@ -324,7 +310,6 @@ static int getexecs(unsigned char *source, int pathid)
 	buffer = NULL;
 	UnLock(sourcelock);
 	FreeDosObject(DOS_EXALLCONTROL, excontrol);
-        //CloseLibrary((struct Library *) DOSBase); //-V2545
 	return state;
 }
 
@@ -477,7 +462,7 @@ static int handlekeys(void)
 static int exec_match(unsigned char *em)
 {
         struct TagItem stags[5];
-        long int file = 0L;
+        BPTR file = 0L;
 	unsigned char conline[FN_MAX_LENGTH] = "";
 	unsigned char dem[FN_MAX_LENGTH] = "";
 
@@ -488,10 +473,13 @@ static int exec_match(unsigned char *em)
 		(void)snprintf((char *)dem, FN_MAX_LENGTH, "%s%s%s", paths[sel->pathid], "/", em);
 	}
 
-        if ((file = Open(conline, MODE_NEWFILE))) {
+        if ((file = Open(conline, MODE_READWRITE))) {
                 // Will not fix MISRA warnings from amiga NDK
                 stags[0].ti_Tag = SYS_Input; //-V2544 //-V2568
-                stags[0].ti_Data = (long unsigned int)file;
+		#pragma GCC diagnostic push
+		#pragma GCC diagnostic ignored "-Wsign-conversion"
+                stags[0].ti_Data = file; //-V2544 //-V2568
+		#pragma GCC diagnostic pop
                 stags[1].ti_Tag = SYS_Output; //-V2544 //-V2568
                 stags[1].ti_Data = 0; //-V2568
                 stags[2].ti_Tag = SYS_Asynch; //-V2544 //-V2568
@@ -500,7 +488,7 @@ static int exec_match(unsigned char *em)
                 stags[3].ti_Data = pstack_size; //-V2568
                 stags[4].ti_Tag = TAG_DONE; //-V2568
 
-                if ((SystemTagList(dem, stags)) == -1) {
+                if ((SystemTagList(dem, stags)) != 0) {
                         return DONE;
                 }
 
@@ -531,7 +519,9 @@ static int match_to_win(unsigned char *strbuf)
 		if (item->text != matches->text) {
 			pos = (short)(textwidth(pos, ptext) + (short)spacew);
 		}
-
+		if (dawin->Width < (textwidth(pos, (unsigned char *)tmpitem->text))) {
+			break;
+		}
 		mtext.IText = (unsigned char *)item->text;
 		mtext.LeftEdge = pos;
 		PrintIText(dawin->RPort, &mtext, LOFFS, TOFFS);
@@ -701,7 +691,6 @@ static int match(void)
         static int tokn = 0;
 
         char buf[sizeof text], *s;
-        //char buf[FN_MAX_LENGTH], *s;
         int i, tokc = 0;
         size_t len, textsize;
         struct item *item, *lprefix, *lsubstr, *prefixend, *substrend;
