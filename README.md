@@ -1,5 +1,5 @@
 # Tabexec
-[//]:  
+[//]: #del  
 
 Launcher for AmigaOS 3.x, with tab and auto completion.
 
@@ -8,12 +8,12 @@ Tabexec is meant to be used as a process launcher.
 Tabexec is inspired by Dmenu by suckless.org.
 
 ## Configuration and ToolTypes
-[//]:  
+[//]: #del  
 
 Tabexec is configured through the AmigaOS ToolType system.
 
 ### Paths to scan
-[//]:  
+[//]: #del  
 
 Set paths with info ToolType PATHS, like so:
 
@@ -24,7 +24,7 @@ PATHS=SYS:C:,SYS:,SYS:Utilities
 Default PATHS TT is set to: SYS:C:,SYS:Tools
 
 ### Stack size
-[//]:  
+[//]: #del  
 
 The stacksize for launched programs can be changed with the
 PSTACK TT.
@@ -37,7 +37,7 @@ PSTACK=8192
 Default stack size is: 16384
 
 ### Colors
-[//]:  
+[//]: #del  
 
 The colors of the tabexec window can be changed with the following TTs.
 
@@ -54,14 +54,14 @@ BPEN_SEP=<integer>
 ```
 
 ### Fonts
-[//]:  
+[//]: #del  
 
 At the moment tabexec looks best when using the same system default font and screen font.
 
 The fonts will probably be configurable in a later release.
 
 ## Installation
-[//]:  
+[//]: #del  
 
 Copy tabexec and tabexec.info to somewhere in your path.
 
@@ -75,7 +75,7 @@ Or launch from where you see fit.
 The files tabexec and tabexec.info should be kept together.
 
 ## Usage
-[//]:  
+[//]: #del  
 
 It is a good companion to dintwm (a tiling wm also found on aminet),
 but is perfectly usable a standalone launcher.
@@ -99,7 +99,7 @@ In short:
 Info files are filtered out of suggestions.
 
 ## Bugs
-[//]:  
+[//]: #del  
 
 There are probably bugs. Report them on github: https://github.com/RasmusEdgar/tabexec
 
@@ -108,7 +108,7 @@ Tested and is stable on AmigaOS 3.1.4 and 3.2 on both fs-uae and Amiga 1200.
 Tested and is stable on AmigaOS 3.9 on fs-uae.
 
 ### Known bugs
-[//]:  
+[//]: #del  
 
 It crashes sometimes on a specific distribution of AmigaOS 3.9 running on V1200.
 
