@@ -18,6 +18,7 @@ FLAWCMD = flawfinder
 FLAWOPTS = -F
 SPLINTCMD = splint
 SPLINTARGS = -I $(HOME)/opt/amiga/m68k-amigaos/ndk-include/
+PANDOC = cat amiheader.txt > tabexec.readme && sed 's/\[\/\/\].*/--/g' README.md | pandoc -f markdown -t plain - >> tabexec.readme
 TARGET = tabexec
 
 ifdef strict
