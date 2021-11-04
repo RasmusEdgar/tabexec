@@ -341,7 +341,7 @@ static bool filter(const char *s)
 static int init_dawin(void)
 {
         struct TagItem tagitem[8];
-	unsigned long dawin_h = 20;
+	unsigned long dawin_h = 0;
 	short unsigned int *dfpen = NULL;
 
         lockbasescreen(&ilock, &screen);
@@ -349,6 +349,8 @@ static int init_dawin(void)
                 unlockbasescreen(&ilock, &screen);
 		return DONE;
 	}
+
+	dawin_h = (unsigned long)screen->BarHeight + 1UL;
 
 	dfpen = drawinfo->dri_Pens;
 

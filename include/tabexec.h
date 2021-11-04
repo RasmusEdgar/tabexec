@@ -76,7 +76,7 @@
 #define DEFAULT_STACK (unsigned long)16384
 
 #define LOFFS 0
-#define TOFFS 3
+#define TOFFS 2
 
 struct ExecBase *SysBase;
 struct ExAllData *tead, *ead, *buffer;

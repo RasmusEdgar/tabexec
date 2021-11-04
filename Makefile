@@ -39,7 +39,7 @@ all : $(OBJECTS)
 	$(CC) $(CFLAGS) -o $(TARGET) $(OBJECTS)
 ifdef strict
 	$(PANDOC)
-	$(CPPLINTCMD) $(CPPLINTOPTS) $(SOURCES) $(filter-out $(EXTHEADERS),$(HEADERS))
+	$(CPPLINTCMD) $(CPPLINTOPTS) $(SOURCES)
 	$(CPPCHECKCMD) $(CPPCHECKOPTS) $(HEADERS) $(SOURCES)
 	$(FLAWCMD) $(FLAWOPTS) $(HEADERS) $(SOURCES)
 	$(SPLINTCMD) $(SOURCES) $(SPLINTARGS)
@@ -49,10 +49,6 @@ ifdef misra
 	$(foreach elem,$(SOURCES),plog-converter -t csv $(elem:.c=.log) | grep 'Filtered' ${newline})
 endif
 endif
-
-
-dintwm.o : $(MAINHEADER) $(EXTHEADERS)
-commodity.o : $(MAINHEADER) $(CONFHEADER)
 
 .PHONY : clean
 clean :
