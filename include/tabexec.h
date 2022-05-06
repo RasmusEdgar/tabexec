@@ -70,8 +70,8 @@
 #define REPLACE_C (unsigned char)(0x0007)
 #define INSERT_C (unsigned char)(0x0008)
 
-#define DEFAULT_FPEN 3U
-#define DEFAULT_BPEN 1U
+#define DEFAULT_BPEN 3U
+#define DEFAULT_FPEN 1U
 
 #define DEFAULT_STACK (unsigned long)16384
 

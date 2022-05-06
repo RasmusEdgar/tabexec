@@ -78,13 +78,15 @@ static void cleanup(void);
 static void nukewin(void);
 static struct Vars *vars;
 static struct DrawInfo *drawinfo;
-static unsigned long hook_routine(struct Hook *hook, struct SGWork *sgw, unsigned long *msg);
-static void init_hook(struct Hook *hook, unsigned long (*ccode)(struct Hook *hook, struct SGWork *sgw, unsigned long *msg));
+static unsigned long hook_routine(struct Hook *hook, struct SGWork *sgw, const unsigned long *msg);
+static void init_hook(struct Hook *hook, unsigned long (*ccode)(struct Hook *hook, struct SGWork *sgw, const unsigned long *msg));
 unsigned long __saveds hookEntry(struct Hook *hookptr __asm("a0"), void  *object __asm("a2"), void  *message __asm("a1"));
 static short int textwidth(int lei, unsigned char * it);
 static void setdefaults(void);
 static int pup_paths(const char * s);
 static bool filter(const char *s);
+static int decorate_win(void);
+static void clear_rect(void);
 static int custom_exec_n = 0;
 static unsigned char space[] = " ";
 static unsigned char sep[] = " || ";
@@ -411,10 +413,9 @@ static int init_dawin(void)
 
 	spacew = (unsigned short)textwidth(0, space);
 
-	SetAPen(dawin->RPort, colors.fpen[0]);
-	SetBPen(dawin->RPort, colors.bpen[0]);
+	SetABPenDrMd(dawin->RPort, colors.fpen[0], colors.bpen[0], (JAM2|INVERSVID));
 
-	SetRast(dawin->RPort, colors.fpen[0]);
+	SetRast(dawin->RPort, colors.bpen[0]);
 	stext.LeftEdge = (short)((unsigned short)MYSTRGADWIDTH + spacew);
 	stext.IText = sep;
 	PrintIText(dawin->RPort, &stext, LOFFS, TOFFS);
@@ -502,17 +503,22 @@ static int exec_match(unsigned char *em)
 
 static int match_to_win(unsigned char *strbuf)
 {
-	struct item *item = NULL;
-	unsigned char *ptext = NULL;
-	short pos = 0;
-
 	(void)snprintf(text, FN_MAX_LENGTH, "%s", (const char *)strbuf);
 
 	if ((match()) == DONE) {
 		return DONE;
 	}
 
-	RectFill(dawin->RPort, stext.LeftEdge, 0, screen->Width, winh);
+	return decorate_win();
+}
+
+static int decorate_win(void)
+{
+	struct item *item = NULL;
+	unsigned char *ptext = NULL;
+	short pos = 0;
+
+	clear_rect();
 	pos = stext.LeftEdge;
 
 	for (item = matches; item && item->text; ptext = (unsigned char *)item->text, item++) {
@@ -525,6 +531,14 @@ static int match_to_win(unsigned char *strbuf)
 			break;
 		}
 		mtext.IText = (unsigned char *)item->text;
+		if (curr->text == item->text) {
+			mtext.FrontPen = 7U;
+			mtext.BackPen = 3U;
+		} else {
+			mtext.FrontPen = colors.fpen[0];
+			mtext.BackPen = colors.bpen[0];
+		}
+
 		mtext.LeftEdge = pos;
 		PrintIText(dawin->RPort, &mtext, LOFFS, TOFFS);
 		spos = textwidth(pos, (unsigned char *)item->text);
@@ -537,6 +551,7 @@ static int match_to_win(unsigned char *strbuf)
 		PrintIText(dawin->RPort, &mtext, LOFFS, TOFFS);
 	}
 	mtext.LeftEdge = 0;
+
 	return RUNNING;
 }
 
@@ -571,13 +586,13 @@ unsigned long __saveds hookEntry(struct Hook *hookptr __asm("a0"), void  *object
 	return((*hookptr->h_SubEntry)(hookptr, object, message));
 }
 
-static void init_hook(struct Hook *hook, unsigned long (*ccode)(struct Hook *hook, struct SGWork *sgw, unsigned long *msg)) {
+static void init_hook(struct Hook *hook, unsigned long (*ccode)(struct Hook *hook, struct SGWork *sgw, const unsigned long *msg)) {
 	hook->h_Entry    = hookEntry;
 	hook->h_SubEntry = ccode;
 	hook->h_Data     = 0;   /* this program does not use this */
 }
 
-static unsigned long hook_routine(__attribute__((unused)) struct Hook *hook, struct SGWork *sgw, unsigned long *msg)
+static unsigned long hook_routine(__attribute__((unused)) struct Hook *hook, struct SGWork *sgw, const unsigned long *msg)
 {
 	unsigned long return_code = ~0UL;
 
@@ -608,6 +623,7 @@ static unsigned long hook_routine(__attribute__((unused)) struct Hook *hook, str
 			}
 			sel = curr;
 			sgw->NumChars = sgw->BufferPos = bufmov(&(sgw->WorkBuffer), curr->text);
+			(void)decorate_win();
 			break;
 		case MINUS_C:
 			if (custom_exec_n < sgw->BufferPos) {
@@ -622,6 +638,7 @@ static unsigned long hook_routine(__attribute__((unused)) struct Hook *hook, str
 			}
 			sel = curr;
 			sgw->NumChars = sgw->BufferPos = bufmov(&(sgw->WorkBuffer), curr->text);
+			(void)decorate_win();
 			break;
 		case TAB_C:
 			if (custom_exec_n < sgw->BufferPos) {
@@ -643,6 +660,7 @@ static unsigned long hook_routine(__attribute__((unused)) struct Hook *hook, str
 					sgw->NumChars = sgw->BufferPos = bufmov(&(sgw->WorkBuffer), curr->text);
 				}
 			}
+			(void)decorate_win();
 			break;
 		case BACKSPACE_C:
 			tabc = 0;
@@ -651,7 +669,7 @@ static unsigned long hook_routine(__attribute__((unused)) struct Hook *hook, str
 			}
 
 			if (sgw->BufferPos == 0) {
-				RectFill(dawin->RPort, stext.LeftEdge, 0, screen->Width, winh);
+				clear_rect();
 				sel = NULL;
 			} else {
 				Signal(tabexectask, editsig);
@@ -673,6 +691,11 @@ static unsigned long hook_routine(__attribute__((unused)) struct Hook *hook, str
 short bufmov(unsigned char **wb, char *s)
 {
 	return (short)snprintf((char *)*wb, FN_MAX_LENGTH, "%s", s);
+}
+
+static void clear_rect(void)
+{
+	RectFill(dawin->RPort, stext.LeftEdge, 0, screen->Width, winh);
 }
 
 static void appenditem(struct item *item, struct item **list, struct item **last)
