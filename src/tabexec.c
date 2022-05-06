@@ -449,6 +449,9 @@ static int handlekeys(void)
 		case IDCMP_GADGETDOWN:
 			break;
 		case IDCMP_GADGETUP:
+			if (custom_exec_n > 0) {
+				exec_match(stribuf);
+			}
 			if ((sel) && (strinc > 0)) {
 				exec_match(stribuf);
 			}
