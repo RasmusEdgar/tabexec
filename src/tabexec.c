@@ -413,7 +413,7 @@ static int init_dawin(void)
 
 	spacew = (unsigned short)textwidth(0, space);
 
-	SetABPenDrMd(dawin->RPort, colors.fpen[0], colors.bpen[0], (JAM2|INVERSVID));
+	SetABPenDrMd(dawin->RPort, colors.fpen[0], colors.bpen[0], (JAM2|INVERSVID)); //-V2544
 
 	SetRast(dawin->RPort, colors.bpen[0]);
 	stext.LeftEdge = (short)((unsigned short)MYSTRGADWIDTH + spacew);
@@ -450,9 +450,11 @@ static int handlekeys(void)
 			break;
 		case IDCMP_GADGETUP:
 			if (custom_exec_n > 0) {
+				printf("Stribuf cx: %s\n", stribuf);
 				exec_match(stribuf);
 			}
 			if ((sel) && (strinc > 0)) {
+				printf("Stribuf: %s\n", stribuf);
 				exec_match(stribuf);
 			}
 			state = DONE;
@@ -600,6 +602,12 @@ static unsigned long hook_routine(__attribute__((unused)) struct Hook *hook, str
 	unsigned long return_code = ~0UL;
 
 	if (*msg == (unsigned long)SGH_KEY) {
+		if (sgw->Code == SPACE_C) {
+			if (custom_exec_n == 0) {
+				custom_exec_n = sgw->BufferPos;
+			}
+		}
+
 		if ((sgw->EditOp == REPLACE_C) || (sgw->EditOp == INSERT_C)) {
 			Signal(tabexectask, editsig);
 			return return_code;
@@ -608,11 +616,6 @@ static unsigned long hook_routine(__attribute__((unused)) struct Hook *hook, str
 		switch (sgw->Code) {
 		case ESCAPE_C:
 			Signal(tabexectask, deadsig);
-			break;
-		case SPACE_C:
-			if (custom_exec_n == 0) {
-				custom_exec_n = sgw->BufferPos;
-			}
 			break;
 		case PLUS_C:
 			if (custom_exec_n < sgw->BufferPos) {
