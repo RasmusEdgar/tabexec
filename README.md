@@ -53,6 +53,12 @@ FPEN_SEP=<integer>
 BPEN_SEP=<integer>
 ```
 
+Change the front and background color of the current highlighted selection:
+```
+FPEN_HL=<integer>
+BPEN_HL=<integer>
+```
+
 ### Fonts
 [//]: #del  
 

@@ -57,7 +57,9 @@
 #define BPEN_ID 102
 #define FPEN_SEP_ID 103
 #define BPEN_SEP_ID 104
-#define PSTACK_ID 105
+#define FPEN_HL_ID 105
+#define BPEN_HL_ID 106
+#define PSTACK_ID 107
 
 #define DEFAULT_PATH "SYS:C,SYS:Utilities,SYS:Tools"
 
@@ -72,6 +74,8 @@
 
 #define DEFAULT_BPEN 3U
 #define DEFAULT_FPEN 1U
+#define DEFAULT_FPEN_HL 7U
+#define DEFAULT_BPEN_HL 3U
 
 #define DEFAULT_STACK (unsigned long)16384
 
@@ -89,6 +93,8 @@ typedef struct {
 	unsigned char bpen[1];
 	unsigned char fpen_sep[1];
 	unsigned char bpen_sep[1];
+	unsigned char fpen_hl[1];
+	unsigned char bpen_hl[1];
 } Colors;
 Colors colors;
 
@@ -117,8 +123,8 @@ struct IntuiText mtext = {
 	.LeftEdge = 0,
 	.ITextFont = NULL,
 	.DrawMode = JAM2, //-V2568
-	.FrontPen = 1, //-V2568
-	.BackPen = 3, //-V2568
+	.FrontPen = DEFAULT_FPEN, //-V2568
+	.BackPen = DEFAULT_BPEN, //-V2568
 	.IText = NULL,
 	.NextText = NULL
 };
@@ -128,8 +134,8 @@ struct IntuiText stext = {
 	.LeftEdge = 0,
 	.ITextFont = NULL,
 	.DrawMode = JAM2, //-V2568
-	.FrontPen = 1, //-V2568
-	.BackPen = 3, //-V2568
+	.FrontPen = DEFAULT_FPEN, //-V2568
+	.BackPen = DEFAULT_BPEN, //-V2568
 	.IText = NULL,
 	.NextText = NULL
 };
@@ -145,6 +151,8 @@ char TYPE_FPEN[] = "FPEN";
 char TYPE_BPEN[] = "BPEN";
 char TYPE_FPEN_SEP[] = "FPEN_SEP";
 char TYPE_BPEN_SEP[] = "BPEN_SEP";
+char TYPE_FPEN_HL[] = "FPEN_HL";
+char TYPE_BPEN_HL[] = "BPEN_HL";
 char TYPE_PSTACK[] = "PSTACK";
 
 Opts defopts[] = {
@@ -153,5 +161,7 @@ Opts defopts[] = {
         { TYPE_BPEN, BPEN_ID, OPTTYPE_ID },
         { TYPE_FPEN_SEP, FPEN_SEP_ID, OPTTYPE_ID },
         { TYPE_BPEN_SEP, BPEN_SEP_ID, OPTTYPE_ID },
+        { TYPE_FPEN_HL, FPEN_HL_ID, OPTTYPE_ID },
+        { TYPE_BPEN_HL, BPEN_HL_ID, OPTTYPE_ID },
         { TYPE_PSTACK, PSTACK_ID, OPTTYPE_ID },
 };

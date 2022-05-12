@@ -181,6 +181,8 @@ static void setdefaults(void)
 	colors.bpen[0] = DEFAULT_BPEN;
 	colors.fpen_sep[0] = DEFAULT_FPEN;
 	colors.bpen_sep[0] = DEFAULT_FPEN;
+	colors.fpen_hl[0] = DEFAULT_FPEN_HL;
+	colors.bpen_hl[0] = DEFAULT_BPEN_HL;
 	pstack_size = DEFAULT_STACK;
 }
 
@@ -227,6 +229,12 @@ static int attachtooltypes(void)
 					break;
 				case BPEN_SEP_ID:
 					colors.bpen_sep[0] = (unsigned char)strtoul((const char *)tt_optvalue, (char **)NULL, 10);
+					break;
+				case FPEN_HL_ID:
+					colors.fpen_hl[0] = (unsigned char)strtoul((const char *)tt_optvalue, (char **)NULL, 10);
+					break;
+				case BPEN_HL_ID:
+					colors.bpen_hl[0] = (unsigned char)strtoul((const char *)tt_optvalue, (char **)NULL, 10);
 					break;
 				case PSTACK_ID:
 					pstack_size = (unsigned char)strtoul((const char *)tt_optvalue, (char **)NULL, 10);
@@ -537,8 +545,8 @@ static int decorate_win(void)
 		}
 		mtext.IText = (unsigned char *)item->text;
 		if (curr->text == item->text) {
-			mtext.FrontPen = 7U;
-			mtext.BackPen = 3U;
+			mtext.FrontPen = colors.fpen_hl[0];
+			mtext.BackPen = colors.bpen_hl[0];
 		} else {
 			mtext.FrontPen = colors.fpen[0];
 			mtext.BackPen = colors.bpen[0];
