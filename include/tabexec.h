@@ -59,7 +59,12 @@
 #define BPEN_SEP_ID 104
 #define FPEN_HL_ID 105
 #define BPEN_HL_ID 106
-#define PSTACK_ID 107
+#define BOX_ID 107
+#define BOX_H_ID 108
+#define BOX_C_ID 109
+#define BOX_X_ID 110
+#define BOX_Y_ID 111
+#define PSTACK_ID 112
 
 #define DEFAULT_PATH "SYS:C,SYS:Utilities,SYS:Tools"
 
@@ -78,6 +83,8 @@
 #define DEFAULT_BPEN_HL 3U
 
 #define DEFAULT_STACK (unsigned long)16384
+
+#define DEFAULT_BOXH 400UL
 
 #define LOFFS 0
 #define TOFFS 2
@@ -153,6 +160,11 @@ char TYPE_FPEN_SEP[] = "FPEN_SEP";
 char TYPE_BPEN_SEP[] = "BPEN_SEP";
 char TYPE_FPEN_HL[] = "FPEN_HL";
 char TYPE_BPEN_HL[] = "BPEN_HL";
+char TYPE_BOX[] = "BOX";
+char TYPE_BOX_H[] = "BOX_H";
+char TYPE_BOX_C[] = "BOX_C";
+char TYPE_BOX_X[] = "BOX_X";
+char TYPE_BOX_Y[] = "BOX_Y";
 char TYPE_PSTACK[] = "PSTACK";
 
 Opts defopts[] = {
@@ -163,5 +175,10 @@ Opts defopts[] = {
         { TYPE_BPEN_SEP, BPEN_SEP_ID, OPTTYPE_ID },
         { TYPE_FPEN_HL, FPEN_HL_ID, OPTTYPE_ID },
         { TYPE_BPEN_HL, BPEN_HL_ID, OPTTYPE_ID },
+        { TYPE_BOX, BOX_ID, OPTTYPE_ID },
+        { TYPE_BOX_H, BOX_H_ID, OPTTYPE_ID },
+        { TYPE_BOX_C, BOX_C_ID, OPTTYPE_ID },
+        { TYPE_BOX_X, BOX_X_ID, OPTTYPE_ID },
+        { TYPE_BOX_Y, BOX_Y_ID, OPTTYPE_ID },
         { TYPE_PSTACK, PSTACK_ID, OPTTYPE_ID },
 };

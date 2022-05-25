@@ -59,6 +59,39 @@ FPEN_HL=<integer>
 BPEN_HL=<integer>
 ```
 
+### Boxed window
+[//]: #del  
+
+If you want to run tabexec in a boxed window instead of an inline window, the
+following TTs can be set.
+
+Enable boxed window mode:
+```
+BOX=<any text>
+```
+
+Change height of window box:
+```
+BOX_H=<integer>
+```
+
+Center window box:
+```
+BOX_C=<any text>
+```
+
+Change x coodirnate for window box:
+```
+BOX_X=<integer>
+```
+
+Change y coordinate for window box:
+```
+BOX_Y=<integer>
+```
+
+Window box width is set to maximum gadget string width and can not be changed.
+
 ### Fonts
 [//]: #del  
 

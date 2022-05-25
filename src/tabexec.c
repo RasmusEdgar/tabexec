@@ -86,6 +86,9 @@ static void setdefaults(void);
 static int pup_paths(const char * s);
 static bool filter(const char *s);
 static int decorate_win(void);
+static int windec(void);
+static int boxdec(void);
+static unsigned long centerbox(unsigned int wc, unsigned int hc);
 static void clear_rect(void);
 static int custom_exec_n = 0;
 static unsigned char space[] = " ";
@@ -94,7 +97,7 @@ static unsigned short spacew;
 static char deadsignum = -1, editsignum = -1;
 static unsigned long deadsig, editsig, uportsig;
 static struct Task *tabexectask = NULL;
-static unsigned short winh = 0;
+static unsigned short gadh = 0;
 static char *paths[TT_MAX_LENGTH];
 static char *freepaths, *ppath;
 static int pathc = 0;
@@ -103,6 +106,11 @@ static int tabc = 0;
 static unsigned long pstack_size = 0;
 static char **tokv = NULL, **toktmp = NULL;
 size_t items_size = 0;
+unsigned long boxh = DEFAULT_BOXH;
+short box = FALSE;
+short boxc = FALSE;
+unsigned long boxx = 0UL;
+unsigned long boxy = 0UL;
 
 int main(void)
 {
@@ -140,6 +148,7 @@ int main(void)
         if ((editsignum = AllocSignal(-1)) == (char)-1) {
                 return EXIT_FAILURE;
         }
+
 
 	tabexectask = FindTask(NULL);
 
@@ -235,6 +244,21 @@ static int attachtooltypes(void)
 					break;
 				case BPEN_HL_ID:
 					colors.bpen_hl[0] = (unsigned char)strtoul((const char *)tt_optvalue, (char **)NULL, 10);
+					break;
+				case BOX_ID:
+					box = TRUE;
+					break;
+				case BOX_H_ID:
+					boxh = strtoul((const char *)tt_optvalue, (char **)NULL, 10);
+					break;
+				case BOX_C_ID:
+					boxc = TRUE;
+					break;
+				case BOX_X_ID:
+					boxx = strtoul((const char *)tt_optvalue, (char **)NULL, 10);
+					break;
+				case BOX_Y_ID:
+					boxy = strtoul((const char *)tt_optvalue, (char **)NULL, 10);
 					break;
 				case PSTACK_ID:
 					pstack_size = (unsigned char)strtoul((const char *)tt_optvalue, (char **)NULL, 10);
@@ -350,8 +374,9 @@ static bool filter(const char *s)
 
 static int init_dawin(void)
 {
-        struct TagItem tagitem[8];
-	unsigned long dawin_h = 0;
+        struct TagItem tagitem[10];
+	unsigned long wwidth = 0UL, wheight = 0UL;
+	unsigned long wx = 0UL, wy = 0UL;
 	short unsigned int *dfpen = NULL;
 
         lockbasescreen(&ilock, &screen);
@@ -360,7 +385,23 @@ static int init_dawin(void)
 		return DONE;
 	}
 
-	dawin_h = (unsigned long)screen->BarHeight + 1UL;
+	if (box) {
+		wwidth = (unsigned long)(MYSTRGADWIDTH+24);
+		wheight = boxh;
+		if (boxy != 0UL || boxx != 0UL) {
+			boxc = FALSE;
+			wx = boxx;
+			wy = boxy;
+		}
+		if (boxc) {
+			boxx = centerbox(wwidth, 0U);
+			boxy = centerbox(0U, boxh);
+		}
+	} else {
+		wheight = (unsigned long)screen->BarHeight + 1UL;
+        	wwidth = (unsigned long)screen->Width;
+	}
+
 
 	dfpen = drawinfo->dri_Pens;
 
@@ -393,24 +434,27 @@ static int init_dawin(void)
 		return DONE;
 	}
 
-	winh = (unsigned short)(vars->sgg_Gadget.Height + 5);
-        unsigned long swidth = (unsigned long)screen->Width;
+	gadh = (unsigned short)(vars->sgg_Gadget.Height + 5);
 
         tagitem[0].ti_Tag = WA_Width; //-V2544 //-V2568
-        tagitem[0].ti_Data = swidth;
+        tagitem[0].ti_Data = wwidth; //-V2544 //-V2568
         tagitem[1].ti_Tag = WA_Height; //-V2544 //-V2568
-        tagitem[1].ti_Data = dawin_h;
-        tagitem[2].ti_Tag = WA_Top; //-V2544 //-V2568
-        tagitem[2].ti_Data = 0UL;
-        tagitem[3].ti_Tag = WA_Borderless; //-V2544 //-V2568
-        tagitem[3].ti_Data = 1; //-V2568
-        tagitem[4].ti_Tag = WA_SmartRefresh; //-V2544 //-V2568
-        tagitem[4].ti_Data = 1; //-V2568
-        tagitem[5].ti_Tag = WA_IDCMP; //-V2544 //-V2568
-        tagitem[5].ti_Data = IDCMP_GADGETUP|IDCMP_ACTIVEWINDOW; //-V2544 //-V2568
-	tagitem[6].ti_Tag = WA_Gadgets; //-V2544 //-V2568
-	tagitem[6].ti_Data = (unsigned long)&(vars->sgg_Gadget);
-        tagitem[7].ti_Tag = TAG_DONE; //-V2544 //-V2568
+        tagitem[1].ti_Data = wheight;
+        tagitem[2].ti_Tag = WA_Left; //-V2544 //-V2568
+        tagitem[2].ti_Data = wx; //-V2544 //-V2568
+        tagitem[3].ti_Tag = WA_Top; //-V2544 //-V2568
+        tagitem[3].ti_Data = wy; //-V2544 //-V2568
+        tagitem[4].ti_Tag = WA_Top; //-V2544 //-V2568
+        tagitem[4].ti_Data = 0UL;
+        tagitem[5].ti_Tag = WA_Borderless; //-V2544 //-V2568
+        tagitem[5].ti_Data = 1; //-V2568
+        tagitem[6].ti_Tag = WA_SmartRefresh; //-V2544 //-V2568
+        tagitem[6].ti_Data = 1; //-V2568
+        tagitem[7].ti_Tag = WA_IDCMP; //-V2544 //-V2568
+        tagitem[7].ti_Data = IDCMP_GADGETUP|IDCMP_ACTIVEWINDOW; //-V2544 //-V2568
+	tagitem[8].ti_Tag = WA_Gadgets; //-V2544 //-V2568
+	tagitem[8].ti_Data = (unsigned long)&(vars->sgg_Gadget);
+        tagitem[9].ti_Tag = TAG_DONE; //-V2544 //-V2568
 
         dawin = OpenWindowTagList(NULL, tagitem);
 
@@ -437,6 +481,19 @@ static int init_dawin(void)
 	return RUNNING;
 }
 
+static unsigned long centerbox(unsigned int wc, unsigned int hc)
+{
+	if (wc) {
+		return ((unsigned long)(screen->Width - (short)wc) / 2UL);
+	}
+	if (hc) {
+		return ((unsigned long)(screen->Height - (short)hc) / 2UL);
+	}
+	return 0UL;
+}
+
+
+
 static int handlekeys(void)
 {
 	struct IntuiMessage *message;
@@ -458,11 +515,9 @@ static int handlekeys(void)
 			break;
 		case IDCMP_GADGETUP:
 			if (custom_exec_n > 0) {
-				printf("Stribuf cx: %s\n", stribuf);
 				exec_match(stribuf);
 			}
 			if ((sel) && (strinc > 0)) {
-				printf("Stribuf: %s\n", stribuf);
 				exec_match(stribuf);
 			}
 			state = DONE;
@@ -527,6 +582,16 @@ static int match_to_win(unsigned char *strbuf)
 
 static int decorate_win(void)
 {
+	if (box == TRUE) {
+		return boxdec();
+	} else {
+		return windec();
+	}
+	return DONE;
+}
+
+static int windec(void)
+{
 	struct item *item = NULL;
 	unsigned char *ptext = NULL;
 	short pos = 0;
@@ -564,6 +629,30 @@ static int decorate_win(void)
 		PrintIText(dawin->RPort, &mtext, LOFFS, TOFFS);
 	}
 	mtext.LeftEdge = 0;
+
+	return RUNNING;
+}
+
+static int boxdec(void)
+{
+	struct item *item = NULL;
+
+	clear_rect();
+
+	for (item = matches; item && item->text; item++) {
+		mtext.TopEdge = (short)(mtext.TopEdge + (int)gadh);
+		mtext.LeftEdge = TOFFS;
+		mtext.IText = (unsigned char *)item->text;
+		if (curr->text == item->text) {
+			mtext.FrontPen = colors.fpen_hl[0];
+			mtext.BackPen = colors.bpen_hl[0];
+		} else {
+			mtext.FrontPen = colors.fpen[0];
+			mtext.BackPen = colors.bpen[0];
+		}
+		PrintIText(dawin->RPort, &mtext, LOFFS, TOFFS);
+	}
+	mtext.TopEdge = 0;
 
 	return RUNNING;
 }
@@ -709,7 +798,11 @@ short bufmov(unsigned char **wb, char *s)
 
 static void clear_rect(void)
 {
-	RectFill(dawin->RPort, stext.LeftEdge, 0, screen->Width, winh);
+	if (box == TRUE) {
+		RectFill(dawin->RPort, 0, gadh, MYSTRGADWIDTH, dawin->Height);
+	} else {
+		RectFill(dawin->RPort, stext.LeftEdge, 0, screen->Width, gadh);
+	}
 }
 
 static void appenditem(struct item *item, struct item **list, struct item **last)
