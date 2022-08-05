@@ -394,8 +394,8 @@ static int init_dawin(void)
 			wy = boxy;
 		}
 		if (boxc) {
-			boxx = centerbox(wwidth, 0U);
-			boxy = centerbox(0U, boxh);
+			wx = centerbox(wwidth, 0U);
+			wy = centerbox(0U, boxh);
 		}
 	} else {
 		wheight = (unsigned long)screen->BarHeight + 1UL;
